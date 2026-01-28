@@ -1,0 +1,12 @@
+{
+    "display_name": "Chat Bookmarks",
+    "loading_order": 10,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "包",
+    "version": "1.0.0",
+    "homePage": "",
+    "description": "在聊天訊息上標記書籤，可以預覽和跳轉到書籤訊息，支援跨聊天視窗瀏覽同角色的所有書籤。"
+}

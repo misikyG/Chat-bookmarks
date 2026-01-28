@@ -1,0 +1,1806 @@
+/* Chat Bookmarks Extension Styles */
+
+/* ===== CSS 變數 ===== */
+:root {
+    --bookmark-accent-color: #ffe084;
+    --bookmark-preview-line-clamp: 15;
+    --tag-color: #ffe084;
+}
+
+/* ===== 通用 Scrollbar 樣式 ===== */
+.bookmarks-content::-webkit-scrollbar,
+.bookmarks-tabs-scrollable::-webkit-scrollbar,
+.bookmark-preview-messages::-webkit-scrollbar,
+.quick-preview-text::-webkit-scrollbar,
+.add-chat-tab-list::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.bookmarks-content::-webkit-scrollbar-track,
+.bookmarks-tabs-scrollable::-webkit-scrollbar-track,
+.bookmark-preview-messages::-webkit-scrollbar-track,
+.quick-preview-text::-webkit-scrollbar-track,
+.add-chat-tab-list::-webkit-scrollbar-track {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 5px;
+}
+
+.bookmarks-content::-webkit-scrollbar-thumb,
+.bookmarks-tabs-scrollable::-webkit-scrollbar-thumb,
+.bookmark-preview-messages::-webkit-scrollbar-thumb,
+.quick-preview-text::-webkit-scrollbar-thumb,
+.add-chat-tab-list::-webkit-scrollbar-thumb {
+    background: var(--bookmark-accent-color);
+    border-radius: 5px;
+    border: 2px solid var(--SmartThemeBlurTintColor);
+}
+
+.bookmarks-content::-webkit-scrollbar-thumb:hover,
+.bookmarks-tabs-scrollable::-webkit-scrollbar-thumb:hover,
+.bookmark-preview-messages::-webkit-scrollbar-thumb:hover,
+.quick-preview-text::-webkit-scrollbar-thumb:hover,
+.add-chat-tab-list::-webkit-scrollbar-thumb:hover {
+    background: var(--SmartThemeQuoteColor);
+}
+
+/* ===== 書籤星號按鈕 ===== */
+.chat-bookmark-star {
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 3px;
+    color: var(--SmartThemeBodyColor);
+    order: -999;
+    position: relative;
+    width: 1em;
+    height: 1em;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    top: 1px;
+}
+
+.chat-bookmark-star .bookmark-icon-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    transition: opacity 0.15s ease;
+}
+
+/* 預設顯示空心圖示，隱藏實心圖示 */
+.chat-bookmark-star .bookmark-icon-regular {
+    opacity: 1;
+}
+
+.chat-bookmark-star .bookmark-icon-solid {
+    opacity: 0;
+}
+
+/* 書籤啟用時顯示實心圖示，隱藏空心圖示 */
+.chat-bookmark-star.bookmarked .bookmark-icon-regular {
+    opacity: 0;
+}
+
+.chat-bookmark-star.bookmarked .bookmark-icon-solid {
+    opacity: 1;
+}
+
+.chat-bookmark-star .bookmark-icon-svg svg {
+    width: 100%;
+    height: 100%;
+}
+
+.chat-bookmark-star:hover {
+    opacity: 1 !important;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 4px var(--SmartThemeBodyColor));
+}
+
+.chat-bookmark-star.bookmarked {
+    opacity: 1 !important;
+    color: var(--bookmark-accent-color);
+    animation: bookmark-pulse 0.3s ease;
+}
+
+.chat-bookmark-star.bookmarked .bookmark-icon-svg svg path {
+    fill: var(--bookmark-accent-color);
+}
+
+.chat-bookmark-star.bookmarked:hover {
+    filter: drop-shadow(0 0 6px rgb(from var(--bookmark-accent-color) r g b / 0.6));
+}
+
+/* 防止點擊時出現任何閃爍效果 */
+.chat-bookmark-star:focus,
+.chat-bookmark-star:focus-visible,
+.chat-bookmark-star:active {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.chat-bookmark-star * {
+    pointer-events: none;
+}
+
+/* ===== 擴展功能選單按鈕 ===== */
+#chat-bookmarks-menu-btn {
+    cursor: pointer;
+}
+
+#chat-bookmarks-menu-btn:hover {
+    opacity: 1 !important;
+}
+
+#chat-bookmarks-menu-btn .bookmark-menu-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: var(--SmartThemeBodyColor);
+    position: relative;
+    top: 3px;
+}
+
+#chat-bookmarks-menu-btn .bookmark-menu-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===== 書籤面板 ===== */
+.bookmarks-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    max-height: 95vh;
+    min-width: 550px;
+    min-height: 0;
+}
+
+.bookmarks-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    margin-bottom: 10px;
+}
+
+.bookmarks-panel-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bookmarks-panel-header .header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2em;
+    height: 1.2em;
+    color: var(--bookmark-accent-color);
+}
+
+.bookmarks-panel-header .header-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.bookmarks-settings-btn,
+.bookmarks-tags-btn,
+.bookmarks-quick-action-btn {
+    padding: 7px 10px;
+    min-width: auto;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bookmarks-settings-btn i,
+.bookmarks-tags-btn i,
+.bookmarks-quick-action-btn svg {
+    font-size: 1.1em;
+    width: 1.1em;
+    height: 1.1em;
+}
+
+/* ===== 快速跳轉區域 ===== */
+.bookmarks-quick-action {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+/* 快速操作區域標題（比照標籤管理樣式） */
+.bookmarks-quick-action .quick-action-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.bookmarks-quick-action .quick-action-title i {
+    color: var(--bookmark-accent-color);
+}
+
+.bookmarks-quick-action .quick-action-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bookmarks-quick-action label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: var(--SmartThemeBodyColor);
+    font-weight: 500;
+    font-size: 0.85em;
+}
+
+.bookmarks-quick-action label i {
+    color: var(--bookmark-accent-color);
+}
+
+.bookmarks-quick-action input[type="number"] {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.bookmarks-quick-action .quick-action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.bookmarks-quick-action .menu_button {
+    padding: 6px 12px;
+    height: 32px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 桌面版隱藏按鈕文字，只顯示圖示 */
+.bookmarks-quick-action .menu_button > span:not(.bookmark-quick-icon) {
+    display: none;
+}
+
+.bookmarks-quick-action .bookmark-quick-jump-btn {
+    background: var(--SmartThemeBorderColor);
+}
+
+.bookmarks-quick-action .bookmark-quick-jump-btn:hover {
+    background: rgb(from var(--SmartThemeEmColor) r g b /0.3);
+}
+
+.bookmarks-quick-action .bookmark-quick-bookmark-btn {
+    background: color-mix(in srgb, var(--bookmark-accent-color) 20%, var(--SmartThemeBorderColor));
+    color: var(--bookmark-accent-color);
+}
+
+.bookmarks-quick-action .bookmark-quick-bookmark-btn:hover {
+    background: var(--bookmark-accent-color);
+    color: white;
+}
+
+.bookmarks-quick-action .bookmark-quick-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+}
+
+.bookmarks-quick-action .bookmark-quick-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===== 設定面板 ===== */
+.bookmarks-settings-panel {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+/* 設定面板標題（比照標籤管理樣式） */
+.bookmarks-settings-panel .settings-panel-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.bookmarks-settings-panel .settings-panel-title i {
+    color: var(--bookmark-accent-color);
+}
+
+.bookmarks-settings-panel .settings-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+}
+
+.bookmarks-settings-panel label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 30px;
+    font-size: 0.85em;
+}
+
+.bookmarks-settings-panel label span {
+    white-space: nowrap;
+}
+
+.bookmarks-settings-panel input[type="color"] {
+    width: 40px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.bookmarks-settings-panel input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    height: 30px;
+    box-sizing: border-box;
+}
+
+.bookmarks-settings-panel select {
+    padding: 5px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    height: 30px;
+    box-sizing: border-box;
+    margin-top: 4px;
+}
+
+.bookmarks-settings-panel .bookmark-reset-defaults-btn {
+    padding: 5px 10px;
+    height: 30px;
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.bookmarks-settings-panel .settings-row-second {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+}
+
+/* ===== 排序按鈕 ===== */
+.bookmark-sort-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.bookmark-sort-btn {
+    padding: 5px 8px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.bookmark-sort-btn:hover {
+    opacity: 1;
+}
+
+.bookmark-sort-btn.active {
+    opacity: 1;
+    background: var(--bookmark-accent-color);
+    color: white;
+}
+
+.bookmark-sort-btn svg {
+    flex-shrink: 0;
+}
+
+/* ===== 快速預覽按鈕 ===== */
+.bookmark-quick-preview-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bookmark-quick-preview-btn svg {
+    opacity: 0.8;
+}
+
+.bookmark-quick-preview-btn:hover svg {
+    opacity: 1;
+}
+
+/* ===== 快速預覽彈窗 ===== */
+.quick-preview-container {
+    width: 100%;
+    min-width: 400px;
+}
+
+.quick-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.quick-preview-sender {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.quick-preview-sender.user-sender {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.quick-preview-sender.char-sender {
+    color: var(--bookmark-accent-color);
+}
+
+.quick-preview-meta {
+    font-size: 0.85em;
+    opacity: 0.5;
+}
+
+.quick-preview-text {
+    font-size: 1em;
+    line-height: 1.7;
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 5px;
+    text-align: left;
+}
+/* ===== Tab 標籤頁 ===== */
+.bookmarks-tabs-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+    flex: 1 1 auto;
+    min-height: 150px;
+}
+
+.bookmarks-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 5px;
+    padding-bottom: 0;
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px 8px 0 0;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-bottom: none;
+    position: relative;
+}
+
+.bookmarks-tabs-scrollable {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 5px;
+    padding-right: 40px;
+    scroll-behavior: smooth;
+}
+
+.bookmark-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--SmartThemeBodyColor);
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+    max-width: 180px;
+    flex-shrink: 0;
+}
+
+.bookmark-tab:hover {
+    opacity: 1;
+    background: rgb(from var(--SmartThemeEmColor) r g b /0.3);
+}
+
+.bookmark-tab.active {
+    opacity: 1;
+    background: var(--SmartThemeBorderColor);
+    color: var(--bookmark-accent-color);
+}
+
+.bookmark-tab .tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.bookmark-tab .tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+}
+
+.bookmark-tab .tab-close:hover {
+    opacity: 1;
+    background: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBlurTintColor);
+}
+
+.bookmark-tab.current-chat-tab .tab-close {
+    display: none;
+}
+
+.bookmark-tab-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: color-mix(in srgb, var(--bookmark-accent-color) 15%, var(--SmartThemeBlurTintColor));
+    border: 1px dashed var(--bookmark-accent-color);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--bookmark-accent-color);
+    opacity: 0.85;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(calc(-50% - 2px));
+    z-index: 10;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.bookmark-tab-add:hover {
+    opacity: 1;
+    background: var(--bookmark-accent-color);
+    border-style: solid;
+    color: white;
+    transform: translateY(calc(-50% - 2px)) scale(1.05);
+}
+
+.bookmarks-tab-content {
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 10px;
+    flex: 1 1 auto;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ===== 新增聊天 Tab 彈窗 ===== */
+.add-chat-tab-popup {
+    width: 100%;
+}
+
+.add-chat-tab-popup h4 {
+    margin: 0 0 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.add-chat-tab-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.add-chat-tab-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-chat-tab-item:hover {
+    background: rgb(from var(--SmartThemeEmColor) r g b /0.3);
+    border-color: var(--bookmark-accent-color);
+}
+
+.add-chat-tab-item.already-added {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--SmartThemeBorderColor);
+}
+
+.add-chat-tab-item.already-added:hover {
+    background: var(--SmartThemeBorderColor);
+    border-color: var(--SmartThemeBorderColor);
+}
+
+.add-chat-tab-item .chat-icon {
+    color: var(--SmartThemeQuoteColor);
+    flex-shrink: 0;
+}
+
+.add-chat-tab-item .chat-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.add-chat-tab-item .chat-bookmark-count {
+    font-size: 0.85em;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.add-chat-tab-item .chat-added-icon {
+    color: var(--bookmark-accent-color);
+    flex-shrink: 0;
+}
+
+.add-chat-tab-item.current-chat-hint {
+    background: color-mix(in srgb, var(--bookmark-accent-color) 15%, var(--SmartThemeBlurTintColor));
+    border-color: var(--bookmark-accent-color);
+    cursor: default;
+    opacity: 0.9;
+}
+
+.add-chat-tab-item.current-chat-hint:hover {
+    background: color-mix(in srgb, var(--bookmark-accent-color) 15%, var(--SmartThemeBlurTintColor));
+    border-color: var(--bookmark-accent-color);
+}
+
+.add-chat-tab-item.current-chat-hint .chat-icon {
+    color: var(--bookmark-accent-color);
+}
+
+.add-chat-tab-item .current-chat-label {
+    font-size: 0.8em;
+    color: var(--bookmark-accent-color);
+    background: color-mix(in srgb, var(--bookmark-accent-color) 20%, transparent);
+    padding: 2px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.no-available-chats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    padding: 30px 20px;
+    opacity: 0.6;
+}
+
+.no-available-chats i {
+    font-size: 2em;
+    opacity: 0.5;
+}
+
+.no-available-chats p {
+    margin: 0;
+}
+
+/* ===== 書籤內容區域 ===== */
+.bookmarks-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+    padding-bottom: 20px;
+    text-align: left;
+}
+
+/* ===== 書籤項目內容靠左對齊 ===== */
+.bookmark-item-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: left;
+}
+
+/* ===== 空狀態 ===== */
+.bookmark-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--SmartThemeQuoteColor);
+}
+
+.bookmark-empty .bookmark-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.bookmark-empty .bookmark-empty-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.bookmark-empty p {
+    margin: 5px 0;
+}
+
+.bookmark-empty .bookmark-hint {
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+/* ===== 書籤清單 ===== */
+.bookmark-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 20px;
+}
+
+/* ===== 書籤項目 ===== */
+.bookmark-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.bookmark-item:hover {
+    background-color: rgb(from var(--SmartThemeEmColor) r g b /0.3);
+    border-color: var(--bookmark-accent-color);
+}
+
+.bookmark-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: rgb(from var(--SmartThemeBorderColor) r g b /0.5);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: -4px;
+}
+
+.bookmark-item-icon i {
+    font-size: 14px;
+}
+
+.bookmark-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.bookmark-item-sender {
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.bookmark-item-chat-name {
+    font-size: 0.8em;
+    opacity: 0.8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bookmark-item-chat-name i {
+    font-size: 0.9em;
+}
+
+.bookmark-item-text {
+    font-size: 0.9em;
+    color: var(--SmartThemeQuoteColor);
+    display: -webkit-box;
+    -webkit-line-clamp: var(--bookmark-preview-line-clamp, 15);
+    line-clamp: var(--bookmark-preview-line-clamp, 15);
+    -webkit-box-orient: vertical;
+    box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+    line-height: 1.5;
+    word-break: break-word;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+.bookmark-item-meta {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+.bookmark-item-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.bookmark-item-actions .menu_button {
+    padding: 5px 8px;
+    min-width: auto;
+}
+
+.bookmark-item-actions .bookmark-delete {
+    color: var(--bookmark-accent-color);
+    transition: all 0.2s ease;
+}
+
+.bookmark-item-actions .bookmark-delete:hover {
+    background-color: var(--bookmark-accent-color);
+    color: white;
+}
+
+.bookmark-item-actions .bookmark-delete .bookmark-delete-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+}
+
+.bookmark-item-actions .bookmark-delete .bookmark-delete-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===== 訊息預覽 ===== */
+.bookmark-preview-container {
+    display: flex;
+    flex-direction: column;
+    min-width: 550px;
+    height: 100%;
+    flex: 1;
+}
+
+.bookmark-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.bookmark-preview-header .preview-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bookmark-preview-header .preview-title svg {
+    flex-shrink: 0;
+}
+
+.bookmark-preview-header .preview-chat-name {
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+/* ===== 載入更多按鈕 ===== */
+.bookmark-preview-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    cursor: pointer;
+    color: var(--SmartThemeQuoteColor);
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.bookmark-preview-load-more:hover {
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+}
+
+.bookmark-preview-load-more.hidden {
+    display: none;
+}
+
+.bookmark-preview-load-more svg {
+    opacity: 0.7;
+}
+
+.bookmark-preview-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 5px;
+    min-height: 0;
+    text-align: left;
+}
+
+/* ===== 預覽訊息樣式 ===== */
+.bookmark-preview-message {
+    padding: 15px 20px;
+    border-radius: 10px;
+    background-color: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.bookmark-preview-message.user-message {
+    background-color: var(--SmartThemeUserMesBlurTintColor, var(--SmartThemeBlurTintColor));
+}
+
+.bookmark-preview-message.target-message {
+    border: 2px solid var(--bookmark-accent-color);
+    background-color: color-mix(in srgb, var(--bookmark-accent-color) 10%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--bookmark-accent-color) 30%, transparent);
+}
+
+.preview-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.preview-sender {
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+.preview-sender.user-sender {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.preview-sender.char-sender {
+    color: var(--bookmark-accent-color);
+}
+
+.preview-msg-id {
+    font-size: 0.8em;
+    opacity: 0.5;
+}
+
+.preview-text {
+    font-size: 1em;
+    line-height: 1.7;
+    word-break: break-word;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+/* ===== 預覽文字共用樣式 (.preview-text 和 .quick-preview-text) ===== */
+.preview-text .action-text,
+.quick-preview-text .action-text {
+    color: var(--SmartThemeEmColor);
+    font-style: italic;
+}
+
+.preview-text .dialogue-text,
+.quick-preview-text .dialogue-text {
+    color: var(--SmartThemeQuoteColor);
+}
+
+.preview-text .underline-text,
+.quick-preview-text .underline-text {
+    color: var(--SmartThemeUnderlineColor, rgb(188, 231, 207));
+    text-decoration: underline;
+}
+
+.preview-text .preview-code-block,
+.quick-preview-text .preview-code-block {
+    display: block;
+    background-color: rgb(from var(--SmartThemeBorderColor) r g b /0.3);
+    border: 1px solid rgb(from var(--SmartThemeBorderColor) r g b /0.5);
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}
+
+.preview-text .preview-code-block code,
+.quick-preview-text .preview-code-block code {
+    background: none !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    font-family: inherit;
+    display: block;
+    white-space: pre-wrap;
+}
+
+.preview-text .preview-inline-code,
+.quick-preview-text .preview-inline-code {
+    background-color: rgb(from var(--SmartThemeBorderColor) r g b /0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.preview-text .preview-details-wrapper,
+.quick-preview-text .preview-details-wrapper {
+    margin: 0;
+}
+
+.preview-text .preview-details-wrapper details,
+.quick-preview-text .preview-details-wrapper details {
+    background-color: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.preview-text .preview-details-wrapper details summary,
+.quick-preview-text .preview-details-wrapper details summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 0;
+    user-select: none;
+    list-style: none;
+}
+
+.preview-text .preview-details-wrapper details summary::-webkit-details-marker,
+.quick-preview-text .preview-details-wrapper details summary::-webkit-details-marker {
+    display: none;
+}
+
+.preview-text .preview-details-wrapper details summary::before,
+.quick-preview-text .preview-details-wrapper details summary::before {
+    content: '▶ ';
+    font-size: 0.8em;
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+
+.preview-text .preview-details-wrapper details[open] summary::before,
+.quick-preview-text .preview-details-wrapper details[open] summary::before {
+    content: '▼ ';
+}
+
+.preview-text .preview-details-wrapper details[open] > *:not(summary),
+.quick-preview-text .preview-details-wrapper details[open] > *:not(summary) {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+}
+
+.preview-text .preview-blockquote,
+.quick-preview-text .preview-blockquote {
+    border-left: 3px solid var(--SmartThemeQuoteColor);
+    padding-left: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    margin: 4px 0;
+    display: block;
+}
+
+.preview-text .preview-hr,
+.quick-preview-text .preview-hr {
+    border: none;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+    margin: 12px 0;
+}
+
+.preview-text .preview-heading,
+.quick-preview-text .preview-heading {
+    margin: 12px 0 8px 0;
+    font-weight: bold;
+    line-height: 1.3;
+    display: block;
+}
+
+.preview-text .preview-h1,
+.quick-preview-text .preview-h1 {
+    font-size: 1.4em;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    padding-bottom: 4px;
+}
+
+.preview-text .preview-h2,
+.quick-preview-text .preview-h2 {
+    font-size: 1.3em;
+}
+
+.preview-text .preview-h3,
+.quick-preview-text .preview-h3 {
+    font-size: 1.2em;
+}
+
+.preview-text .preview-h4,
+.preview-text .preview-h5,
+.preview-text .preview-h6,
+.quick-preview-text .preview-h4,
+.quick-preview-text .preview-h5,
+.quick-preview-text .preview-h6 {
+    font-size: 1.1em;
+}
+
+.preview-text .preview-list-item,
+.quick-preview-text .preview-list-item {
+    display: block;
+    margin-left: 10px;
+    padding-left: 5px;
+}
+
+.preview-text .preview-list-item.preview-list-ordered,
+.quick-preview-text .preview-list-item.preview-list-ordered {
+    margin-left: 5px;
+}
+
+.bookmark-preview-actions {
+    padding-top: 10px;
+    padding-bottom: 0;
+    margin-top: 10px;
+    margin-bottom: 0;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.bookmark-preview-actions .bookmark-jump-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* ===== Popup 容器調整 ===== */
+/* 讓 popup-body 使用 flex 佈局填滿整個彈窗高度 */
+.popup:has(.bookmark-preview-container) .popup-body,
+.popup:has(.bookmarks-panel) .popup-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* popup-content 填滿可用空間，讓內容區域擴展 */
+.popup:has(.bookmark-preview-container) .popup-content,
+.popup:has(.bookmarks-panel) .popup-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* popup-controls 固定在底部 */
+.popup:has(.bookmark-preview-container) .popup-controls,
+.popup:has(.bookmarks-panel) .popup-controls {
+    flex-shrink: 0;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+/* popup-controls 內的按鈕確保橫排 */
+.popup:has(.bookmark-preview-container) .popup-controls .menu_button,
+.popup:has(.bookmarks-panel) .popup-controls .menu_button {
+    white-space: nowrap;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== 響應式調整 ===== */
+@media (max-width: 768px) {
+    .bookmarks-panel,
+    .bookmark-preview-container {
+        min-width: unset;
+        width: 100%;
+    }
+
+    .bookmarks-settings-panel .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    /* 手機版快速操作區域 */
+    .bookmarks-quick-action .quick-action-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .bookmarks-quick-action .quick-action-row > * {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .bookmarks-quick-action label {
+        justify-content: flex-start;
+    }
+    
+    .bookmarks-quick-action input[type="number"] {
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .bookmarks-quick-action .quick-action-buttons {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .bookmarks-quick-action .menu_button {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 10px;
+    }
+    
+    /* 手機版顯示按鈕文字 */
+    .bookmarks-quick-action .menu_button > span:not(.bookmark-quick-icon) {
+        display: inline;
+    }
+    
+    /* 手機版快速預覽彈窗 */
+    .quick-preview-container {
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .quick-preview-text {
+        max-height: 50vh;
+    }
+}
+
+/* ===== 動畫 ===== */
+@keyframes bookmark-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+/* ===== 標籤功能樣式 ===== */
+
+/* Header 按鈕群組 */
+.bookmarks-header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* 標籤管理面板 */
+.bookmarks-tags-panel {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.tags-panel-section {
+    margin-bottom: 15px;
+}
+
+.tags-panel-section:last-child {
+    margin-bottom: 0;
+}
+
+.tags-panel-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.tags-panel-title i {
+    color: var(--bookmark-accent-color);
+}
+
+.tags-panel-title .filter-hint {
+    font-weight: normal;
+    font-size: 0.85em;
+    opacity: 0.6;
+}
+
+/* 標籤面板左右兩欄布局 */
+.tags-panel-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 12px;
+}
+
+.tags-section-add,
+.tags-section-manage {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 標籤新增/管理表單 */
+.tag-add-form,
+.tag-manage-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.tag-name-input {
+    flex: 1;
+    min-width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.tag-manage-select {
+    flex: 1;
+    min-width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+/* 圓形選色器通用樣式 */
+.color-picker-round {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid var(--SmartThemeBorderColor);
+    background: var(--SmartThemeBlurTintColor);
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.color-picker-round:hover {
+    border-color: var(--bookmark-accent-color);
+    transform: scale(1.05);
+}
+
+.color-picker-round input[type="color"] {
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: transparent;
+}
+
+/* 標籤新增/刪除按鈕 */
+.tag-add-btn,
+.tags-section-manage .tag-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+}
+
+.tag-add-btn svg,
+.tags-section-manage .tag-delete-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tag-add-btn {
+    color: var(--bookmark-accent-color);
+    opacity: 0.8;
+}
+
+.tag-add-btn:hover {
+    opacity: 1;
+    background: color-mix(in srgb, var(--bookmark-accent-color) 20%, transparent);
+    border-color: var(--bookmark-accent-color);
+}
+
+.tags-section-manage .tag-delete-btn {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.7;
+}
+
+.tags-section-manage .tag-delete-btn:hover {
+    opacity: 1;
+    color: #ff4444;
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+}
+
+/* 標籤篩選區 */
+.tags-section-filter {
+    padding-top: 10px;
+    border-top: 1px solid var(--SmartThemeBorderColor);
+}
+
+.tags-section-filter .tags-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.filter-hint {
+    font-size: 0.8em;
+    opacity: 0.6;
+    font-weight: normal;
+}
+
+/* 標籤篩選器 */
+.tag-filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.tag-filter-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: var(--SmartThemeBorderColor);
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.tag-filter-item:not(.tag-filter-all) {
+    background: color-mix(in srgb, var(--tag-color) 20%, var(--SmartThemeBlurTintColor));
+    color: var(--tag-color);
+}
+
+.tag-filter-item:hover {
+    opacity: 0.8;
+    transform: scale(1.02);
+}
+
+.tag-filter-item.active {
+    border-color: var(--tag-color, var(--bookmark-accent-color));
+    box-shadow: 0 0 8px color-mix(in srgb, var(--tag-color, var(--bookmark-accent-color)) 40%, transparent);
+}
+
+.tag-filter-item.tag-filter-all.active {
+    border-color: var(--bookmark-accent-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--bookmark-accent-color) 40%, transparent);
+}
+
+.tag-filter-item.tag-filter-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tag-filter-item.tag-filter-all i,
+.tag-filter-item.tag-filter-all svg {
+    height: 1em;
+    width: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 響應式：窄螢幕時上下排列 */
+@media (max-width: 600px) {
+    .tags-panel-row {
+        flex-direction: column;
+        gap: 0px;
+    }
+    
+    .tags-panel-section {
+        margin-bottom: 8px;
+    }
+    
+    .tags-panel-title {
+        margin-bottom: 5px;
+        font-size: 0.85em;
+    }
+    
+    .tag-add-form,
+    .tag-manage-form {
+        gap: 5px;
+    }
+    
+    .bookmarks-tags-panel {
+        padding: 10px;
+    }
+    
+    /* 設定欄目重置按鈕與排序按鈕同行 */
+    .bookmarks-settings-panel .settings-row-second {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .bookmarks-settings-panel .bookmark-reset-defaults-btn {
+        margin-left: 0;
+    }
+}
+
+/* 書籤項目右側區域 */
+.bookmark-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.bookmark-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+/* 書籤項目標籤區域 */
+.bookmark-item-tags-area {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+    max-width: 200px;
+}
+
+.bookmark-tags-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+
+.bookmark-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: color-mix(in srgb, var(--tag-color) 25%, var(--SmartThemeBlurTintColor));
+    color: var(--tag-color);
+    border-radius: 15px;
+    font-size: 0.85em;
+    white-space: nowrap;
+    border: 1px solid color-mix(in srgb, var(--tag-color) 40%, transparent);
+}
+
+.bookmark-tag .tag-name {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bookmark-tag .tag-remove {
+    cursor: pointer;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.bookmark-tag .tag-remove:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.bookmark-tag .tag-remove i {
+    font-size: 0.9em;
+}
+
+/* 添加標籤按鈕 */
+.bookmark-add-tag-wrapper {
+    position: relative;
+}
+
+.bookmark-add-tag-btn i,
+.bookmark-add-tag-btn svg {
+    font-size: 1em;
+    width: 1em;
+    height: 1em;
+    display: block;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.bookmark-add-tag-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    background: var(--SmartThemeBorderColor);
+    border: 1px dashed var(--SmartThemeQuoteColor);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    font-size: 1em;
+    line-height: 1;
+}
+
+.bookmark-add-tag-btn:hover {
+    opacity: 1;
+    border-style: solid;
+    background: var(--bookmark-accent-color);
+    border-color: var(--bookmark-accent-color);
+    color: white;
+}
+
+/* 添加標籤下拉選單 */
+.bookmark-add-tag-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 5px;
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    padding: 5px;
+    min-width: 120px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.bookmark-add-tag-dropdown.show {
+    display: block;
+}
+
+.add-tag-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.15s ease;
+    color: var(--tag-color, #ffc107);
+}
+
+.add-tag-option:hover {
+    background: color-mix(in srgb, var(--tag-color, #ffc107) 20%, var(--SmartThemeBlurTintColor));
+}
+
+.add-tag-option .tag-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--tag-color, #ffc107);
+    flex-shrink: 0;
+}
+
+.add-tag-empty {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.6;
+}
