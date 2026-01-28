@@ -51,12 +51,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1px 3px;
     color: var(--SmartThemeBodyColor);
     order: -999;
     position: relative;
-    width: 1em;
-    height: 1em;
+    width: 1.1em;
+    height: 1.1em;
     user-select: none;
     -webkit-user-select: none;
     caret-color: transparent;
