@@ -1175,7 +1175,7 @@ function createTabBookmarksHtml(bookmarks, chatFileName) {
     if (!filteredBookmarks || filteredBookmarks.length === 0) {
         const filterMessage = activeTagFilters.length > 0 
             ? '<p>沒有符合此標籤的書籤</p><p class="bookmark-hint">嘗試清除標籤篩選或添加標籤到書籤</p>'
-            : '<p>此聊天沒有任何書籤</p><p class="bookmark-hint">點擊訊息旁的圖示來添加書籤</p>';
+            : '<p>此聊天沒有任何書籤</p><p class="bookmark-hint">點擊訊息上的按鈕來添加書籤</p>';
         return `
             <div class="bookmark-empty">
                 <span class="bookmark-empty-icon">${getBookmarkIconSvg(false)}</span>
