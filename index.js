@@ -13,33 +13,43 @@ import { debounce_timeout } from "../../../constants.js";
 import { SlashCommand } from "../../../slash-commands/SlashCommand.js";
 import { ARGUMENT_TYPE, SlashCommandArgument } from "../../../slash-commands/SlashCommandArgument.js";
 import { SlashCommandParser } from "../../../slash-commands/SlashCommandParser.js";
+import { loadLocale, t } from "./i18n.js";
 
 // 擴充功能基本設定
 const extensionName = "Chat-bookmarks";
+const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 // SVG 圖樣定義
 const BOOKMARK_ICONS = {
     star: {
-        name: '星星',
+        nameKey: 'iconName_star',
         solid: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="currentColor" d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329l104.2-103.1c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"/></svg>',
         regular: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="currentColor" d="M287.9 0c9.2 0 17.6 5.2 21.6 13.5l68.6 141.3 153.2 22.6c9 1.3 16.5 7.6 19.3 16.3s.5 18.1-6 24.3L433.6 328.4l26.2 155.6c1.5 9-2.2 18.1-9.7 23.5s-17.3 6-25.3 1.7l-137-73.2L151 509.1c-8.1 4.3-17.9 3.7-25.3-1.7s-11.2-14.5-9.7-23.5l26.2-155.6L31.1 217.9c-6.6-6.2-8.9-15.6-6-24.3s10.3-15 19.3-16.3l153.2-22.6L266.3 13.5C270.4 5.2 278.7 0 287.9 0zm0 79L235.4 187.2c-3.5 7.1-10.2 12.1-18.1 13.3L99 217.9l85.9 85.1c5.5 5.5 8 13.3 6.6 21l-20.3 119.7 107.1-57.2c7.1-3.8 15.6-3.8 22.7 0l107.1 57.2-20.3-119.7c-1.4-7.7 1.1-15.5 6.6-21l85.9-85.1-118.3-17.4c-7.8-1.2-14.6-6.1-18.1-13.3L287.9 79z"/></svg>'
     },
     heart: {
-        name: '愛心',
+        nameKey: 'iconName_heart',
         solid: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/></svg>',
         regular: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M225.8 468.2l-2.5-2.3L48.1 303.2C17.4 274.7 0 234.7 0 192.8v-3.3c0-70.4 50-130.8 119.2-144C158.6 37.9 198.9 47 231 69.6c9 6.4 17.4 13.8 25 22.3c4.2-4.8 8.7-9.2 13.5-13.3c3.7-3.2 7.5-6.2 11.5-9c32.1-22.6 72.4-31.7 111.8-23.3C462 57.6 512 118 512 188.5v3.3c0 41.9-17.4 81.9-48.1 110.4L288.7 465.9l-2.5 2.3c-8.2 7.6-19 11.9-30.2 11.9s-22-4.2-30.2-11.9zM239.1 145c-.4-.3-.7-.7-1-1.1l-17.8-20c-23.5-26.3-56.9-41-91.5-41c-40.6 0-77.7 24.1-94.3 61.3c-7.6 17.1-11.5 35.6-11.5 54.6v3.3c0 28.5 11.9 55.8 32.8 75.2L256 468.2l200.3-186.2c20.9-19.5 32.8-46.7 32.8-75.2v-3.3c0-19-3.9-37.5-11.5-54.6c-16.6-37.2-53.7-61.3-94.3-61.3c-34.6 0-68 14.7-91.5 41l-17.8 20c-.3 .4-.7 .7-1 1.1c-4.5 4.5-10.6 7-16.9 7s-12.4-2.5-16.9-7z"/></svg>'
     },
     bookmark: {
-        name: '書籤',
+        nameKey: 'iconName_bookmark',
         solid: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="currentColor" d="M0 48V487.7C0 501.1 10.9 512 24.3 512c5 0 9.9-1.5 14-4.4L192 400 345.7 507.6c4.1 2.9 9 4.4 14 4.4c13.4 0 24.3-10.9 24.3-24.3V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48z"/></svg>',
         regular: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="currentColor" d="M0 48C0 21.5 21.5 0 48 0l0 48 0 393.4 130.1-92.9c8.3-6 19.6-6 27.9 0L336 441.4 336 48 48 48 48 0 336 0c26.5 0 48 21.5 48 48l0 439.7c0 13.4-10.9 24.3-24.3 24.3c-5 0-9.9-1.5-14-4.4L192 400 38.3 507.6c-4.1 2.9-9 4.4-14 4.4C10.9 512 0 501.1 0 487.7L0 48z"/></svg>'
     },
     flag: {
-        name: '旗幟',
+        nameKey: 'iconName_flag',
         solid: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path fill="currentColor" d="M64 32C64 14.3 49.7 0 32 0S0 14.3 0 32L0 64 0 368 0 480c0 17.7 14.3 32 32 32s32-14.3 32-32l0-128 64.3-16.1c41.1-10.3 84.6-5.5 122.5 13.4c44.2 22.1 95.5 24.8 141.7 7.4l34.7-13c12.5-4.7 20.8-16.6 20.8-30l0-247.7c0-23-24.2-38-44.8-27.7l-9.6 4.8c-46.3 23.2-100.8 23.2-147.1 0c-35.1-17.6-75.4-22-113.5-12.5L64 48l0-16z"/></svg>',
         regular: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path fill="currentColor" d="M48 24C48 10.7 37.3 0 24 0S0 10.7 0 24L0 64 0 350.5 0 400l0 88c0 13.3 10.7 24 24 24s24-10.7 24-24l0-100 80.3-20.1c41.1-10.3 84.6-5.5 122.5 13.4c44.2 22.1 95.5 24.8 141.7 7.4l34.7-13c12.5-4.7 20.8-16.6 20.8-30l0-279.7c0-23-24.2-38-44.8-27.7l-9.6 4.8c-46.3 23.2-100.8 23.2-147.1 0c-35.1-17.6-75.4-22-113.5-12.5L48 52l0-28zm0 77.5l96.6-24.2c27-6.7 55.5-3.6 80.4 8.8c54.9 27.4 118.7 29.7 175 6.8l0 241.8-24.4 9.1c-33.7 12.6-71.2 10.7-103.4-5.4c-48.2-24.1-103.3-30.1-155.6-17.1L48 338.5l0-237z"/></svg>'
     }
 };
+
+/**
+ * 取得圖示名稱 (使用 I18N)
+ */
+function getIconName(iconKey) {
+    const icon = BOOKMARK_ICONS[iconKey];
+    return icon ? t(icon.nameKey) : iconKey;
+}
 
 // 預設設定
 const defaultSettings = {
@@ -253,12 +263,12 @@ function isMessageBookmarked(messageId) {
  */
 async function addBookmark(messageId) {
     if (messageId < 0 || messageId >= chat.length) {
-        toastr.warning('無效的訊息ID', '書籤');
+        toastr.warning(t('toast_invalidMessageId'), t('toast_bookmark'));
         return false;
     }
 
     if (isMessageBookmarked(messageId)) {
-        toastr.info('此訊息已經被標記書籤', '書籤');
+        toastr.info(t('toast_alreadyBookmarked'), t('toast_bookmark'));
         return false;
     }
 
@@ -269,7 +279,7 @@ async function addBookmark(messageId) {
     await saveChatConditional();
 
     if (getSetting('showNotifications')) {
-        toastr.success('已添加書籤', '書籤');
+        toastr.success(t('toast_bookmarkAdded'), t('toast_bookmark'));
     }
     return true;
 }
@@ -282,7 +292,7 @@ async function removeBookmark(messageId) {
     const index = bookmarks.findIndex(b => b.messageId === messageId);
 
     if (index === -1) {
-        toastr.warning('找不到此書籤', '書籤');
+        toastr.warning(t('toast_bookmarkNotFound'), t('toast_bookmark'));
         return;
     }
 
@@ -291,7 +301,7 @@ async function removeBookmark(messageId) {
     await saveChatConditional();
 
     if (getSetting('showNotifications')) {
-        toastr.info('已移除書籤', '書籤');
+        toastr.info(t('toast_bookmarkRemoved'), t('toast_bookmark'));
     }
 }
 
@@ -300,16 +310,16 @@ async function removeBookmark(messageId) {
  */
 async function addBookmarkToExternalChat(chatFileName, messageId) {
     const chatData = await fetchChatData(chatFileName);
-    if (!chatData) { toastr.error('無法載入聊天資料', '書籤'); return false; }
+    if (!chatData) { toastr.error(t('toast_unableToLoadChat'), t('toast_bookmark')); return false; }
     
     const messages = Array.isArray(chatData) ? chatData.slice(1) : [];
-    if (messageId >= messages.length) { toastr.warning('訊息編號超出範圍', '書籤'); return false; }
+    if (messageId >= messages.length) { toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark')); return false; }
 
     const metadata = chatData[0].chat_metadata || {};
     const bookmarks = metadata.chat_bookmarks || [];
     
     if (bookmarks.some(b => b.messageId === messageId)) { 
-        toastr.info('此訊息已經被標記書籤', '書籤'); 
+        toastr.info(t('toast_alreadyBookmarked'), t('toast_bookmark')); 
         return false; 
     }
 
@@ -319,7 +329,7 @@ async function addBookmarkToExternalChat(chatFileName, messageId) {
 
     const success = await saveChatData(chatFileName, chatData);
     if (success && getSetting('showNotifications')) {
-        toastr.success('已添加書籤', '書籤');
+        toastr.success(t('toast_bookmarkAdded'), t('toast_bookmark'));
     }
     return success;
 }
@@ -330,7 +340,7 @@ async function addBookmarkToExternalChat(chatFileName, messageId) {
 async function removeBookmarkFromChat(chatFileName, messageId) {
     const chatData = await fetchChatData(chatFileName);
     if (!chatData || !Array.isArray(chatData) || chatData.length === 0) {
-        toastr.error('無法載入聊天資料', '書籤');
+        toastr.error(t('toast_unableToLoadChat'), t('toast_bookmark'));
         return false;
     }
 
@@ -339,7 +349,7 @@ async function removeBookmarkFromChat(chatFileName, messageId) {
     const index = bookmarks.findIndex(b => b.messageId === messageId);
 
     if (index === -1) {
-        toastr.warning('找不到此書籤', '書籤');
+        toastr.warning(t('toast_bookmarkNotFound'), t('toast_bookmark'));
         return false;
     }
 
@@ -349,7 +359,7 @@ async function removeBookmarkFromChat(chatFileName, messageId) {
 
     const success = await saveChatData(chatFileName, chatData);
     if (success && getSetting('showNotifications')) {
-        toastr.info('已移除書籤', '書籤');
+        toastr.info(t('toast_bookmarkRemoved'), t('toast_bookmark'));
     }
     return success;
 }
@@ -541,7 +551,7 @@ function getBookmarkTagsHtml(bookmark, chatFileName) {
             return `
                 <span class="bookmark-tag" data-tagid="${tag.id}" data-chat="${escapeHtml(chatFileName)}" data-msgid="${bookmark.messageId}" style="--tag-color: ${tag.color};">
                     <span class="tag-name">${escapeHtml(tag.name)}</span>
-                    <span class="tag-remove" title="移除此標籤"><i class="fa-solid fa-xmark"></i></span>
+                    <span class="tag-remove" title="${t('btn_removeTag')}"><i class="fa-solid fa-xmark"></i></span>
                 </span>
             `;
         })
@@ -597,7 +607,7 @@ function addBookmarkButtonToMessage(messageElement) {
     const iconType = getSetting('bookmarkIcon');
     const icon = BOOKMARK_ICONS[iconType] || BOOKMARK_ICONS.star;
     const bookmarkButton = $(`
-        <div class="mes_button chat-bookmark-star ${isBookmarked ? 'bookmarked' : ''}" title="點擊標記/取消書籤">
+        <div class="mes_button chat-bookmark-star ${isBookmarked ? 'bookmarked' : ''}" title="${t('btn_clickToToggle')}">
             <span class="bookmark-icon-svg bookmark-icon-regular">${icon.regular}</span>
             <span class="bookmark-icon-svg bookmark-icon-solid">${icon.solid}</span>
         </div>
@@ -694,17 +704,17 @@ async function scrollToMessage(messageId) {
     
     // 如果訊息不在當前載入範圍內，嘗試載入更多
     if (!messageElement.length) {
-        toastr.info('正在載入更多訊息...', '書籤', { timeOut: 2000 });
+        toastr.info(t('toast_loadingMoreMessages'), t('toast_bookmark'), { timeOut: 2000 });
         const loaded = await loadMessagesUntilTarget(messageId);
         if (!loaded) {
-            toastr.warning('找不到該訊息，可能訊息ID無效', '書籤');
+            toastr.warning(t('toast_messageNotFound'), t('toast_bookmark'));
             return;
         }
         messageElement = $(`#chat .mes[mesid="${messageId}"]`);
     }
     
     if (!messageElement.length) {
-        toastr.warning('找不到該訊息', '書籤');
+        toastr.warning(t('toast_messageNotFoundSimple'), t('toast_bookmark'));
         return;
     }
     
@@ -719,7 +729,7 @@ async function loadChatAndJump(chatFileName, messageId) {
     const currentChatName = getCurrentChatFileName();
 
     // 顯示常駐警告通知
-    const warningToast = toastr.warning('跳轉中，此通知消失前請勿操作，訊息量大時需稍候。', '書籤跳轉', {
+    const warningToast = toastr.warning(t('toast_jumpWarning'), t('toast_jumpTitle'), {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: false
     });
 
@@ -728,10 +738,10 @@ async function loadChatAndJump(chatFileName, messageId) {
         try {
             await scrollToMessage(messageId);
             toastr.clear(warningToast);
-            toastr.success('跳轉完成', '書籤');
+            toastr.success(t('toast_jumpComplete'), t('toast_bookmark'));
         } catch (error) {
             toastr.clear(warningToast);
-            toastr.error('跳轉失敗: ' + error.message, '書籤');
+            toastr.error(t('toast_jumpFailed') + error.message, t('toast_bookmark'));
         }
         return;
     }
@@ -752,11 +762,11 @@ async function loadChatAndJump(chatFileName, messageId) {
 
         await scrollToMessage(messageId);
         toastr.clear(warningToast);
-        toastr.success('跳轉完成', '書籤');
+        toastr.success(t('toast_jumpComplete'), t('toast_bookmark'));
     } catch (error) {
         console.error('Error loading chat:', error);
         toastr.clear(warningToast);
-        toastr.error('跳轉失敗: ' + error.message, '書籤');
+        toastr.error(t('toast_jumpFailed') + error.message, t('toast_bookmark'));
     }
 }
 
@@ -953,7 +963,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
     }
 
     if (!previewData || previewData.messages.length === 0) {
-        toastr.warning('無法取得訊息預覽', '書籤');
+        toastr.warning(t('toast_unableToPreview'), t('toast_bookmark'));
         return;
     }
 
@@ -962,7 +972,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
             <div class="bookmark-preview-header">
                 <span class="preview-title">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="20" height="20"><path fill="currentColor" d="M249.6 471.5c10.8 3.8 22.4-4.1 22.4-15.5V78.6c0-4.2-1.6-8.4-5-11C247.4 52 215.2 32 176 32C114.4 32 68.2 67 48 80.6V432c18.2-12.4 56.6-32 128-32 26.7 0 48.6 4.3 66.6 12.1c4 1.7 6.4 5.9 7 10.4zm27.4 0c.6-4.5 3-8.7 7-10.4c18-7.8 39.9-12.1 66.6-12.1c71.4 0 109.8 19.6 128 32V80.6c-20.2-13.6-66.4-48.6-128-48.6-39.2 0-71.4 20-91 35.6c-3.4 2.6-5 6.8-5 11v377.4c0 11.4 11.6 19.3 22.4 15.5z"/></svg>
-                    訊息預覽
+                    ${t('panel_messagePreview')}
                 </span>
                 <span class="preview-chat-name">${escapeHtml(chatFileName.replace('.jsonl', ''))}</span>
             </div>
@@ -977,13 +987,13 @@ async function showBookmarkPreview(messageId, chatFileName) {
             </div>
             <div class="bookmark-preview-actions">
                 <button class="menu_button bookmark-jump-btn" data-chat="${chatFileName}" data-msgid="${messageId}">
-                    <i class="fa-solid fa-arrow-right"></i> 跳轉到此訊息
+                    <i class="fa-solid fa-arrow-right"></i> ${t('panel_jumpToMessage')}
                 </button>
             </div>
         </div>
     `;
 
-    const popup = new Popup(popupContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: '關閉' });
+    const popup = new Popup(popupContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
     const dlg = $(popup.dlg);
 
     dlg.find('.bookmark-jump-btn').on('click', async function() {
@@ -1066,7 +1076,7 @@ async function showQuickPreview(messageId, chatFileName) {
     let isUser = false;
     
     // 顯示載入中通知
-    const loadingToast = toastr.info(`#${messageId} 訊息預覽正在載入，請稍後...`, '書籤', {
+    const loadingToast = toastr.info(t('toast_previewLoading', messageId), t('toast_bookmark'), {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: true
     });
     
@@ -1075,7 +1085,7 @@ async function showQuickPreview(messageId, chatFileName) {
             // 從當前聊天取得訊息
             if (messageId >= chat.length) {
                 toastr.clear(loadingToast);
-                toastr.warning('訊息編號超出範圍', '書籤');
+                toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark'));
                 return;
             }
             message = chat[messageId];
@@ -1086,13 +1096,13 @@ async function showQuickPreview(messageId, chatFileName) {
             const chatData = await fetchChatData(chatFileName);
             if (!chatData || !Array.isArray(chatData)) {
                 toastr.clear(loadingToast);
-                toastr.error('無法載入聊天資料', '書籤');
+                toastr.error(t('toast_unableToLoadChat'), t('toast_bookmark'));
                 return;
             }
             const messages = chatData.slice(1);
             if (messageId >= messages.length) {
                 toastr.clear(loadingToast);
-                toastr.warning('訊息編號超出範圍', '書籤');
+                toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark'));
                 return;
             }
             message = messages[messageId];
@@ -1115,11 +1125,11 @@ async function showQuickPreview(messageId, chatFileName) {
         // 清除載入通知
         toastr.clear(loadingToast);
         
-        const popup = new Popup(previewContent, POPUP_TYPE.TEXT, '', { wide: true, okButton: '關閉' });
+        const popup = new Popup(previewContent, POPUP_TYPE.TEXT, '', { wide: true, okButton: t('btn_close') });
         await popup.show();
     } catch (error) {
         toastr.clear(loadingToast);
-        toastr.error('預覽載入失敗: ' + error.message, '書籤');
+        toastr.error(t('toast_previewLoadFailed') + error.message, t('toast_bookmark'));
         console.error('Quick preview error:', error);
     }
 }
@@ -1141,7 +1151,7 @@ function createBookmarkItemHtml(bookmark) {
     const availableTags = customTags.filter(t => !existingTags.includes(t.id));
     const addTagOptionsHtml = availableTags.length > 0 
         ? availableTags.map(t => `<div class="add-tag-option" data-tagid="${t.id}" style="--tag-color: ${t.color};"><span class="tag-dot"></span>${escapeHtml(t.name)}</div>`).join('')
-        : '<div class="add-tag-empty">沒有可用的標籤</div>';
+        : `<div class="add-tag-empty">${t('panel_tagNoAvailable')}</div>`;
 
     return `
         <div class="bookmark-item" data-chat="${escapeHtml(bookmark.chatFileName)}" data-msgid="${bookmark.messageId}">
@@ -1158,15 +1168,15 @@ function createBookmarkItemHtml(bookmark) {
             </div>
             <div class="bookmark-item-right">
                 <div class="bookmark-item-actions">
-                    <button class="menu_button bookmark-jump" title="跳轉到訊息"><i class="fa-solid fa-arrow-right"></i></button>
-                    <button class="menu_button bookmark-delete" title="移除書籤">
+                    <button class="menu_button bookmark-jump" title="${t('btn_jumpToMessage')}"><i class="fa-solid fa-arrow-right"></i></button>
+                    <button class="menu_button bookmark-delete" title="${t('btn_removeBookmark')}">
                         <span class="bookmark-delete-icon">${getBookmarkIconSvg(true)}</span>
                     </button>
                 </div>
                 <div class="bookmark-item-tags-area">
                     ${tagsHtml}
                     <div class="bookmark-add-tag-wrapper">
-                        <button class="bookmark-add-tag-btn" title="添加標籤"><i class="fa-solid fa-plus"></i></button>
+                        <button class="bookmark-add-tag-btn" title="${t('btn_addTag')}"><i class="fa-solid fa-plus"></i></button>
                         <div class="bookmark-add-tag-dropdown">
                             ${addTagOptionsHtml}
                         </div>
@@ -1187,8 +1197,8 @@ function createTabBookmarksHtml(bookmarks, chatFileName) {
     
     if (!filteredBookmarks || filteredBookmarks.length === 0) {
         const filterMessage = activeTagFilters.length > 0 
-            ? '<p>沒有符合此標籤的書籤</p><p class="bookmark-hint">嘗試清除標籤篩選或添加標籤到書籤</p>'
-            : '<p>此聊天沒有任何書籤</p><p class="bookmark-hint">點擊訊息上的按鈕來添加書籤</p>';
+            ? `<p>${t('empty_noMatchingBookmarks')}</p><p class="bookmark-hint">${t('empty_noMatchingBookmarksHint')}</p>`
+            : `<p>${t('empty_noBookmarks')}</p><p class="bookmark-hint">${t('empty_noBookmarksHint')}</p>`;
         return `
             <div class="bookmark-empty">
                 <span class="bookmark-empty-icon">${getBookmarkIconSvg(false)}</span>
@@ -1206,7 +1216,7 @@ function createTabBookmarksHtml(bookmarks, chatFileName) {
  */
 async function loadTabContent(dlg, chatFileName, currentChatName, popup) {
     const contentContainer = dlg.find('.bookmarks-content');
-    contentContainer.html('<div class="bookmark-empty"><p>載入中...</p></div>');
+    contentContainer.html(`<div class="bookmark-empty"><p>${t('empty_loading')}</p></div>`);
 
     let bookmarks;
     if (chatFileName === currentChatName) {
@@ -1244,7 +1254,7 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         const isCurrentChat = chatFileName === currentChatName;
 
         if (!isCurrentChat) {
-            const confirmed = await Popup.show.confirm('移除書籤', `確定要從「${chatFileName.replace('.jsonl', '')}」中移除此書籤嗎？`);
+            const confirmed = await Popup.show.confirm(t('panel_confirmRemoveTitle'), t('panel_confirmRemoveMessage', chatFileName.replace('.jsonl', '')));
             if (!confirmed) return;
         }
 
@@ -1309,14 +1319,14 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
 async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentPopup) {
     const selectedChats = getSelectedChatsForCurrentCharacter();
     
-    const loadingPopup = new Popup('<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在檢查書籤...<br><small style="color: var(--SmartThemeQuoteColor); margin-top: 8px; display: block;">聊天視窗越多查找越慢，請稍後...</small></div>', POPUP_TYPE.TEXT, '', { okButton: null });
+    const loadingPopup = new Popup(`<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> ${t('toast_checkingBookmarks')}<br><small style="color: var(--SmartThemeQuoteColor); margin-top: 8px; display: block;">${t('toast_checkingBookmarksHint')}</small></div>`, POPUP_TYPE.TEXT, '', { okButton: null });
     loadingPopup.show();
 
     let chatListHtml = `
-        <div class="add-chat-tab-item current-chat-hint" title="您當前正在此聊天中">
+        <div class="add-chat-tab-item current-chat-hint" title="${t('panel_currentChat')}">
             <i class="fa-solid fa-comment chat-icon"></i>
             <span class="chat-name">${escapeHtml(currentChatName.replace('.jsonl', ''))}</span>
-            <span class="current-chat-label">目前聊天</span>
+            <span class="current-chat-label">${t('addChat_currentChat')}</span>
         </div>
     `;
     let hasAvailableChats = false;
@@ -1332,21 +1342,21 @@ async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentP
             <div class="add-chat-tab-item ${isAlreadyAdded ? 'already-added' : ''}" data-chat="${escapeHtml(chatInfo.file_name)}">
                 <i class="fa-regular fa-comment-dots chat-icon"></i>
                 <span class="chat-name">${escapeHtml(chatInfo.file_name.replace('.jsonl', ''))}</span>
-                <span class="chat-bookmark-count">${bookmarks.length} 個書籤</span>
+                <span class="chat-bookmark-count">${t('addChat_bookmarkCount', bookmarks.length)}</span>
                 ${isAlreadyAdded ? '<i class="fa-solid fa-check chat-added-icon"></i>' : ''}
             </div>
         `;
     }
 
     loadingPopup.complete(0);
-    if (!hasAvailableChats) chatListHtml = '<div class="no-available-chats"><i class="fa-regular fa-bookmark"></i><p>沒有其他聊天有書籤</p></div>';
+    if (!hasAvailableChats) chatListHtml = `<div class="no-available-chats"><i class="fa-regular fa-bookmark"></i><p>${t('empty_noOtherChats')}</p></div>`;
 
     const popup = new Popup(`
         <div class="add-chat-tab-popup">
-            <h4><i class="fa-solid fa-plus"></i> 選擇要顯示的聊天</h4>
+            <h4><i class="fa-solid fa-plus"></i> ${t('addChat_title')}</h4>
             <div class="add-chat-tab-list">${chatListHtml}</div>
         </div>
-    `, POPUP_TYPE.TEXT, '', { okButton: '關閉' });
+    `, POPUP_TYPE.TEXT, '', { okButton: t('btn_close') });
 
     const dlg = $(popup.dlg);
     dlg.find('.add-chat-tab-item:not(.already-added):not(.current-chat-hint)').on('click', async function() {
@@ -1363,12 +1373,12 @@ async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentP
             <div class="bookmark-tab" data-chat="${escapeHtml(chatFileName)}" title="${escapeHtml(chatFileName)}">
                 <i class="fa-regular fa-file"></i>
                 <span class="tab-name">${escapeHtml(displayName)}</span>
-                <span class="tab-close" title="關閉此分頁"><i class="fa-solid fa-xmark"></i></span>
+                <span class="tab-close" title="${t('btn_closeTab')}"><i class="fa-solid fa-xmark"></i></span>
             </div>
         `);
 
         $(this).addClass('already-added').append('<i class="fa-solid fa-check chat-added-icon"></i>').off('click');
-        toastr.success(`已新增「${displayName}」`, '書籤');
+        toastr.success(t('toast_tabAdded', displayName), t('toast_bookmark'));
     });
 
     await popup.show();
@@ -1404,7 +1414,7 @@ async function getCharacterChats() {
 async function showBookmarksPanel() {
     const allChats = await getCharacterChats();
     const currentChatName = getCurrentChatFileName();
-    const characterName = this_chid !== undefined ? characters[this_chid].name : '群組';
+    const characterName = this_chid !== undefined ? characters[this_chid].name : t('panel_group');
     const settings = extension_settings[extensionName];
     const openedTabs = getSelectedChatsForCurrentCharacter();
     const currentBookmarks = getCurrentChatBookmarks().map(b => ({ ...b, chatFileName: currentChatName, isCurrent: true }));
@@ -1412,13 +1422,13 @@ async function showBookmarksPanel() {
     const activeTagFilters = getSetting('activeTagFilters') || [];
 
     const iconOptions = Object.entries(BOOKMARK_ICONS).map(([key, icon]) =>
-        `<option value="${key}" ${settings.bookmarkIcon === key ? 'selected' : ''}>${icon.name}</option>`
+        `<option value="${key}" ${settings.bookmarkIcon === key ? 'selected' : ''}>${getIconName(key)}</option>`
     ).join('');
 
     // 建立標籤管理下拉選單選項 HTML
     const tagSelectOptionsHtml = customTags.length > 0
         ? customTags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${escapeHtml(tag.name)}</option>`).join('')
-        : '<option value="" disabled>尚無標籤</option>';
+        : `<option value="" disabled>${t('panel_tagNone')}</option>`;
 
     // 建立標籤篩選器 HTML (支援多選)
     const tagFilterHtml = customTags.map(tag => `
@@ -1429,7 +1439,7 @@ async function showBookmarksPanel() {
 
     let tabsHtml = `
         <div class="bookmark-tab active current-chat-tab" data-chat="${escapeHtml(currentChatName)}" title="${escapeHtml(currentChatName)}">
-            <i class="fa-solid fa-comment"></i><span class="tab-name">目前聊天</span>
+            <i class="fa-solid fa-comment"></i><span class="tab-name">${t('panel_currentChat')}</span>
         </div>
     `;
     for (const chatName of openedTabs) {
@@ -1438,7 +1448,7 @@ async function showBookmarksPanel() {
             <div class="bookmark-tab" data-chat="${escapeHtml(chatName)}" title="${escapeHtml(chatName)}">
                 <i class="fa-regular fa-file"></i>
                 <span class="tab-name">${escapeHtml(chatName.replace('.jsonl', ''))}</span>
-                <span class="tab-close" title="關閉此分頁"><i class="fa-solid fa-xmark"></i></span>
+                <span class="tab-close" title="${t('btn_closeTab')}"><i class="fa-solid fa-xmark"></i></span>
             </div>
         `;
     }
@@ -1446,28 +1456,28 @@ async function showBookmarksPanel() {
     const panelContent = `
         <div class="bookmarks-panel">
             <div class="bookmarks-panel-header">
-                <h3><span class="header-icon">${getBookmarkIconSvg(true)}</span> ${escapeHtml(characterName)} 的書籤</h3>
+                <h3><span class="header-icon">${getBookmarkIconSvg(true)}</span> ${t('panel_bookmarksOf', escapeHtml(characterName))}</h3>
                 <div class="bookmarks-header-buttons">
-                    <button class="menu_button bookmarks-quick-action-btn" title="訊息快速操作">
+                    <button class="menu_button bookmarks-quick-action-btn" title="${t('btn_quickAction')}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M181.3 32.4c17.4 2.9 29.2 19.4 26.3 36.8L197.8 128l95.1 0 11.5-69.3c2.9-17.4 19.4-29.2 36.8-26.3s29.2 19.4 26.3 36.8L357.8 128l58.2 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-68.9 0L323.8 320l60.2 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-70.9 0-11.5 69.3c-2.9 17.4-19.4 29.2-36.8 26.3s-29.2-19.4-26.3-36.8l9.8-58.7-95.1 0-11.5 69.3c-2.9 17.4-19.4 29.2-36.8 26.3s-29.2-19.4-26.3-36.8L90.2 384 32 384c-17.7 0-32-14.3-32-32s14.3-32 32-32l68.9 0 23.3-128L64 192c-17.7 0-32-14.3-32-32s14.3-32 32-32l70.9 0 11.5-69.3c2.9-17.4 19.4-29.2 36.8-26.3zM187.1 192L163.8 320l95.1 0 23.3-128-95.1 0z"/></svg>
                     </button>
-                    <button class="menu_button bookmarks-tags-btn" title="標籤管理"><i class="fa-solid fa-tags"></i></button>
-                    <button class="menu_button bookmarks-settings-btn" title="設定"><i class="fa-solid fa-gear"></i></button>
+                    <button class="menu_button bookmarks-tags-btn" title="${t('btn_tagManagement')}"><i class="fa-solid fa-tags"></i></button>
+                    <button class="menu_button bookmarks-settings-btn" title="${t('btn_settings')}"><i class="fa-solid fa-gear"></i></button>
                 </div>
             </div>
             
             <div class="bookmarks-quick-action" style="display: none;">
-                <div class="quick-action-title"><i class="fa-solid fa-bolt"></i> 訊息快速操作</div>
+                <div class="quick-action-title"><i class="fa-solid fa-bolt"></i> ${t('panel_quickActionTitle')}</div>
                 <div class="quick-action-row">
-                    <label><i class="fa-solid fa-hashtag"></i><span>訊息編號</span></label>
-                    <input type="number" id="bookmark-quick-msgid" placeholder="輸入訊息編號" min="0">
+                    <label><i class="fa-solid fa-hashtag"></i><span>${t('panel_messageNumber')}</span></label>
+                    <input type="number" id="bookmark-quick-msgid" placeholder="${t('panel_enterMessageNumber')}" min="0">
                     <div class="quick-action-buttons">
-                        <button class="menu_button bookmark-quick-preview-btn" title="預覽此訊息">
+                        <button class="menu_button bookmark-quick-preview-btn" title="${t('btn_preview')}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="1em" height="1em"><path fill="currentColor" d="M288 80c-65.2 0-118.8 29.6-159.9 67.7C89.6 183.5 63 226 49.4 256c13.6 30 40.2 72.5 78.6 108.3C169.2 402.4 222.8 432 288 432s118.8-29.6 159.9-67.7C486.4 328.5 513 286 526.6 256c-13.6-30-40.2-72.5-78.6-108.3C406.8 109.6 353.2 80 288 80zM95.4 112.6C142.5 68.8 207.2 32 288 32s145.5 36.8 192.6 80.6c46.8 43.5 78.1 95.4 93 131.1c3.3 7.9 3.3 16.7 0 24.6c-14.9 35.7-46.2 87.7-93 131.1C433.5 443.2 368.8 480 288 480s-145.5-36.8-192.6-80.6C48.6 356 17.3 304 2.5 268.3c-3.3-7.9-3.3-16.7 0-24.6C17.3 208 48.6 156 95.4 112.6zM288 336c44.2 0 80-35.8 80-80s-35.8-80-80-80c-.7 0-1.3 0-2 0c1.3 5.1 2 10.5 2 16c0 35.3-28.7 64-64 64c-5.5 0-10.9-.7-16-2c0 .7 0 1.3 0 2c0 44.2 35.8 80 80 80zm0-208a128 128 0 1 1 0 256 128 128 0 1 1 0-256z"/></svg>
-                            <span>預覽</span>
+                            <span>${t('btn_preview')}</span>
                         </button>
-                        <button class="menu_button bookmark-quick-jump-btn" title="跳轉到此訊息"><i class="fa-solid fa-arrow-right"></i> <span>跳轉</span></button>
-                        <button class="menu_button bookmark-quick-bookmark-btn" title="書籤此訊息"><span class="bookmark-quick-icon">${getBookmarkIconSvg(true)}</span> <span>書籤</span></button>
+                        <button class="menu_button bookmark-quick-jump-btn" title="${t('btn_jump')}"><i class="fa-solid fa-arrow-right"></i> <span>${t('btn_jump')}</span></button>
+                        <button class="menu_button bookmark-quick-bookmark-btn" title="${t('btn_bookmarkVerb')}"><span class="bookmark-quick-icon">${getBookmarkIconSvg(true)}</span> <span>${t('btn_bookmarkVerb')}</span></button>
                     </div>
                 </div>
             </div>
@@ -1475,38 +1485,38 @@ async function showBookmarksPanel() {
             <div class="bookmarks-tags-panel" style="display: none;">
                 <div class="tags-panel-row">
                     <div class="tags-panel-section tags-section-add">
-                        <div class="tags-panel-title">標籤新增</div>
+                        <div class="tags-panel-title">${t('panel_tagAdd')}</div>
                         <div class="tag-add-form">
-                            <input type="text" class="tag-name-input" placeholder="輸入新標籤" maxlength="20">
+                            <input type="text" class="tag-name-input" placeholder="${t('panel_tagEnterNew')}" maxlength="20">
                             <label class="color-picker-round">
-                                <input type="color" class="tag-new-color" value="#ffe084" title="選擇顏色">
+                                <input type="color" class="tag-new-color" value="#ffe084" title="${t('panel_tagSelectColor')}">
                             </label>
-                            <button class="menu_button tag-add-btn" title="新增標籤">
+                            <button class="menu_button tag-add-btn" title="${t('panel_tagAdd')}">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 144L48 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l144 0 0 144c0 17.7 14.3 32 32 32s32-14.3 32-32l0-144 144 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-144 0 0-144z"/></svg>
                             </button>
                         </div>
                     </div>
                     <div class="tags-panel-section tags-section-manage">
-                        <div class="tags-panel-title">標籤管理</div>
+                        <div class="tags-panel-title">${t('panel_tagManage')}</div>
                         <div class="tag-manage-form">
                             <select class="tag-manage-select">
                                 ${tagSelectOptionsHtml}
                             </select>
                             <label class="color-picker-round">
-                                <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="更改顏色">
+                                <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
                             </label>
-                            <button class="menu_button tag-delete-btn" title="刪除標籤">
+                            <button class="menu_button tag-delete-btn" title="${t('panel_tagDelete')}">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
                             </button>
                         </div>
                     </div>
                 </div>
                 <div class="tags-panel-section tags-section-filter">
-                    <div class="tags-panel-title"><i class="fa-solid fa-filter"></i> 標籤篩選 <span class="filter-hint">（可多選）</span></div>
+                    <div class="tags-panel-title"><i class="fa-solid fa-filter"></i> ${t('panel_tagFilter')} <span class="filter-hint">${t('panel_tagFilterHint')}</span></div>
                     <div class="tag-filter-container">
                         <span class="tag-filter-item tag-filter-all ${activeTagFilters.length === 0 ? 'active' : ''}" data-tagid="">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M0 72C0 49.9 17.9 32 40 32H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V72zM0 232c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V232zM128 392v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V392c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40zM168 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V72zM296 232v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM168 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V392zM360 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V72zM448 232v48c0 22.1-17.9 40-40 40H360c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM360 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V392z"/></svg>
-                            全部
+                            ${t('panel_tagAll')}
                         </span>
                         ${tagFilterHtml}
                     </div>
@@ -1514,32 +1524,32 @@ async function showBookmarksPanel() {
             </div>
             
             <div class="bookmarks-settings-panel" style="display: none;">
-                <div class="settings-panel-title"><i class="fa-solid fa-gear"></i> 設定</div>
+                <div class="settings-panel-title"><i class="fa-solid fa-gear"></i> ${t('panel_settingsTitle')}</div>
                 <div class="settings-row">
-                    <label><span>重點色</span><label class="color-picker-round"><input type="color" id="bookmark-accent-color" value="${settings.accentColor || '#ffe084'}"></label></label>
-                    <label><span>訊息預覽: 顯示書籤後</span><input type="number" id="bookmark-preview-range" value="${settings.previewRange || 10}" min="1" max="50"> 則</label>
-                    <label><span>書籤條目內容顯示</span><input type="number" id="bookmark-preview-line-clamp" value="${settings.previewLineClamp || 15}" min="1" max="100"> 行</label>
-                    <label><span>書籤圖示</span><select id="bookmark-icon-type">${iconOptions}</select></label>
+                    <label><span>${t('panel_accentColor')}</span><label class="color-picker-round"><input type="color" id="bookmark-accent-color" value="${settings.accentColor || '#ffe084'}"></label></label>
+                    <label><span>${t('panel_previewRange')}</span><input type="number" id="bookmark-preview-range" value="${settings.previewRange || 10}" min="1" max="50"> ${t('panel_previewRangeAfter')}</label>
+                    <label><span>${t('panel_lineClamp')}</span><input type="number" id="bookmark-preview-line-clamp" value="${settings.previewLineClamp || 15}" min="1" max="100"> ${t('panel_lineClampUnit')}</label>
+                    <label><span>${t('panel_bookmarkIcon')}</span><select id="bookmark-icon-type">${iconOptions}</select></label>
                 </div>
                 <div class="settings-row settings-row-second">
-                    <label><span>排序</span></label>
+                    <label><span>${t('panel_sort')}</span></label>
                     <div class="bookmark-sort-buttons">
-                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'messageAsc' ? 'active' : ''}" data-sort="messageAsc" title="訊息由舊到新">
+                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'messageAsc' ? 'active' : ''}" data-sort="messageAsc" title="${t('panel_sortMessageAsc')}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="1em" height="1em"><path fill="currentColor" d="M151.6 42.4C145.5 35.8 137 32 128 32s-17.5 3.8-23.6 10.4l-88 96c-11.9 13-11.1 33.3 2 45.2s33.3 11.1 45.2-2L96 146.3V448c0 17.7 14.3 32 32 32s32-14.3 32-32V146.3l32.4 35.4c11.9 13 32.2 13.9 45.2 2s13.9-32.2 2-45.2l-88-96zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32h32c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32H544c17.7 0 32-14.3 32-32s-14.3-32-32-32H320z"/></svg>
                         </button>
-                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'messageDesc' ? 'active' : ''}" data-sort="messageDesc" title="訊息由新到舊">
+                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'messageDesc' ? 'active' : ''}" data-sort="messageDesc" title="${t('panel_sortMessageDesc')}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="1em" height="1em"><path fill="currentColor" d="M151.6 469.6C145.5 476.2 137 480 128 480s-17.5-3.8-23.6-10.4l-88-96c-11.9-13-11.1-33.3 2-45.2s33.3-11.1 45.2 2L96 365.7V64c0-17.7 14.3-32 32-32s32 14.3 32 32V365.7l32.4-35.4c11.9-13 32.2-13.9 45.2-2s13.9 32.2 2 45.2l-88 96zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32h32c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H320zm0 128c-17.7 0-32 14.3-32 32s14.3 32 32 32H544c17.7 0 32-14.3 32-32s-14.3-32-32-32H320z"/></svg>
                         </button>
-                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'bookmarkNew' ? 'active' : ''}" data-sort="bookmarkNew" title="書籤由新到舊">
+                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'bookmarkNew' ? 'active' : ''}" data-sort="bookmarkNew" title="${t('panel_sortBookmarkNew')}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="0.6em" height="0.6em" style="margin-left:-2px"><path fill="currentColor" d="M169.4 470.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 370.8 224 64c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 306.7L54.6 265.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
                         </button>
-                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'bookmarkOld' ? 'active' : ''}" data-sort="bookmarkOld" title="書籤由舊到新">
+                        <button class="menu_button bookmark-sort-btn ${settings.sortOrder === 'bookmarkOld' ? 'active' : ''}" data-sort="bookmarkOld" title="${t('panel_sortBookmarkOld')}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="0.6em" height="0.6em" style="margin-left:-2px"><path fill="currentColor" d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2l105.4 105.4c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/></svg>
                         </button>
                     </div>
-                    <button class="menu_button bookmark-reset-defaults-btn" title="恢復預設設定"><i class="fa-solid fa-rotate-left"></i> 重置</button>
+                    <button class="menu_button bookmark-reset-defaults-btn" title="${t('panel_resetDefaults')}"><i class="fa-solid fa-rotate-left"></i> ${t('btn_reset')}</button>
                 </div>
             </div>
             
@@ -1548,7 +1558,7 @@ async function showBookmarksPanel() {
                     <div class="bookmarks-tabs-scrollable">
                         ${tabsHtml}
                     </div>
-                    <button class="bookmark-tab-add" title="新增其他聊天的書籤"><i class="fa-solid fa-plus"></i></button>
+                    <button class="bookmark-tab-add" title="${t('btn_addOtherChats')}"><i class="fa-solid fa-plus"></i></button>
                 </div>
                 <div class="bookmarks-tab-content">
                     <div class="bookmarks-content" data-current-chat="${escapeHtml(currentChatName)}">
@@ -1559,7 +1569,7 @@ async function showBookmarksPanel() {
         </div>
     `;
 
-    const popup = new Popup(panelContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: '關閉' });
+    const popup = new Popup(panelContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
     const dlg = $(popup.dlg);
 
     // 為 Tab 區域添加滑鼠滾輪橫向滾動支援
@@ -1581,7 +1591,7 @@ async function showBookmarksPanel() {
         // 更新標籤管理下拉選單
         const tagSelectOptionsHtml = tags.length > 0
             ? tags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${escapeHtml(tag.name)}</option>`).join('')
-            : '<option value="" disabled>尚無標籤</option>';
+            : `<option value="" disabled>${t('panel_tagNone')}</option>`;
         const selectEl = dlg.find('.tag-manage-select');
         const currentSelectedId = selectEl.val();
         selectEl.html(tagSelectOptionsHtml);
@@ -1606,7 +1616,7 @@ async function showBookmarksPanel() {
         dlg.find('.tag-filter-container').html(`
             <span class="tag-filter-item tag-filter-all ${currentFilters.length === 0 ? 'active' : ''}" data-tagid="">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M0 72C0 49.9 17.9 32 40 32H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V72zM0 232c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V232zM128 392v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V392c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40zM168 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V72zM296 232v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM168 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V392zM360 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V72zM448 232v48c0 22.1-17.9 40-40 40H360c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM360 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V392z"/></svg>
-                全部
+                ${t('panel_tagAll')}
             </span>
             ${tagFilterHtml}
         `);
@@ -1685,7 +1695,7 @@ async function showBookmarksPanel() {
         const name = nameInput.val().trim();
         
         if (!name) {
-            toastr.warning('請輸入標籤名稱', '標籤');
+            toastr.warning(t('toast_tagEnterName'), t('toast_tag'));
             return;
         }
         
@@ -1697,7 +1707,7 @@ async function showBookmarksPanel() {
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
         
-        toastr.success(`已新增標籤「${name}」`, '標籤');
+        toastr.success(t('toast_tagAdded', name), t('toast_tag'));
     });
     
     // 刪除標籤 (從下拉選單)
@@ -1707,15 +1717,15 @@ async function showBookmarksPanel() {
         const tagId = selectEl.val();
         
         if (!tagId) {
-            toastr.warning('請先選擇要刪除的標籤', '標籤');
+            toastr.warning(t('toast_tagSelectFirst'), t('toast_tag'));
             return;
         }
         
         const tags = getCustomTags();
-        const tag = tags.find(t => t.id === tagId);
+        const tag = tags.find(tg => tg.id === tagId);
         if (!tag) return;
         
-        const confirmed = await Popup.show.confirm('刪除標籤', `確定要刪除標籤「${tag.name}」嗎？\n所有書籤上的此標籤也會被移除。`);
+        const confirmed = await Popup.show.confirm(t('panel_confirmDeleteTagTitle'), t('panel_confirmDeleteTagMessage', tag.name));
         if (!confirmed) return;
         
         await deleteCustomTag(tagId);
@@ -1725,7 +1735,7 @@ async function showBookmarksPanel() {
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
         
-        toastr.info(`已刪除標籤「${tag.name}」`, '標籤');
+        toastr.info(t('toast_tagDeleted', tag.name), t('toast_tag'));
     });
     
     // 更改標籤顏色 (管理區域)
@@ -1815,7 +1825,7 @@ async function showBookmarksPanel() {
 
     // 恢復預設設定
     dlg.find('.bookmark-reset-defaults-btn').on('click', async function() {
-        const confirmed = await Popup.show.confirm('恢復預設設定', '確定要將所有設定恢復為預設值嗎？（書籤資料不受影響）');
+        const confirmed = await Popup.show.confirm(t('panel_confirmResetTitle'), t('panel_confirmResetMessage'));
         if (!confirmed) return;
 
         // 保留書籤資料相關設定
@@ -1856,7 +1866,7 @@ async function showBookmarksPanel() {
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
         
-        toastr.success('已恢復預設設定', '書籤');
+        toastr.success(t('toast_settingsReset'), t('toast_bookmark'));
     });
 
     // 排序按鈕事件
@@ -1876,7 +1886,7 @@ async function showBookmarksPanel() {
     // 快速預覽
     dlg.find('.bookmark-quick-preview-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
-        if (isNaN(msgId) || msgId < 0) { toastr.warning('請輸入有效的訊息編號', '書籤'); return; }
+        if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
         const chatFileName = dlg.find('.bookmark-tab.active').data('chat');
         await showQuickPreview(msgId, chatFileName);
     });
@@ -1884,7 +1894,7 @@ async function showBookmarksPanel() {
     // 快速跳轉
     dlg.find('.bookmark-quick-jump-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
-        if (isNaN(msgId) || msgId < 0) { toastr.warning('請輸入有效的訊息編號', '書籤'); return; }
+        if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
         popup.complete(0);
         await loadChatAndJump(dlg.find('.bookmark-tab.active').data('chat'), msgId);
     });
@@ -1892,12 +1902,12 @@ async function showBookmarksPanel() {
     // 快速書籤
     dlg.find('.bookmark-quick-bookmark-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
-        if (isNaN(msgId) || msgId < 0) { toastr.warning('請輸入有效的訊息編號', '書籤'); return; }
+        if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
 
         const chatFileName = dlg.find('.bookmark-tab.active').data('chat');
         
         if (chatFileName === currentChatName) {
-            if (msgId >= chat.length) { toastr.warning('訊息編號超出範圍', '書籤'); return; }
+            if (msgId >= chat.length) { toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark')); return; }
             await addBookmark(msgId);
         } else {
             await addBookmarkToExternalChat(chatFileName, msgId);
@@ -1949,7 +1959,7 @@ function addExtensionMenuButton() {
     $('#extensionsMenu').append(`
         <div id="chat-bookmarks-menu-btn" class="list-group-item flex-container flexGap5">
             <span class="extensionsMenuExtensionButton bookmark-menu-icon">${getBookmarkIconSvg(true)}</span>
-            <span data-i18n="Bookmarks">書籤</span>
+            <span data-i18n="Bookmarks">${t('extensionName')}</span>
         </div>
     `);
 
@@ -2015,15 +2025,15 @@ function registerSlashCommands() {
         aliases: ['bookmarks', 'bm-panel'],
         callback: async () => {
             await showBookmarksPanel();
-            return '書籤面板已開啟';
+            return t('toast_slashPanelOpened');
         },
-        returns: '開啟書籤面板',
+        returns: t('slash_panelDesc'),
         helpString: `
             <div>
-                開啟書籤管理面板，可以查看和管理所有書籤。
+                ${t('slash_panelHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark-panel</code></pre>
             </div>
         `,
@@ -2035,20 +2045,20 @@ function registerSlashCommands() {
         aliases: ['bm'],
         callback: async () => {
             if (chat.length === 0) {
-                toastr.warning('目前沒有任何訊息', '書籤');
+                toastr.warning(t('toast_currentNoMessages'), t('toast_bookmark'));
                 return '';
             }
             const lastMessageId = chat.length - 1;
             const success = await addBookmark(lastMessageId);
-            return success ? `已為訊息 #${lastMessageId} 添加書籤` : '';
+            return success ? t('toast_slashBookmarkAdded', lastMessageId) : '';
         },
-        returns: '為最後一則訊息添加書籤',
+        returns: t('slash_bookmarkDesc'),
         helpString: `
             <div>
-                為當前聊天中最後一則訊息添加書籤。
+                ${t('slash_bookmarkHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark</code></pre>
             </div>
         `,
@@ -2061,28 +2071,28 @@ function registerSlashCommands() {
         callback: async (args, messageId) => {
             const id = parseInt(messageId);
             if (isNaN(id) || id < 0) {
-                toastr.warning('請提供有效的訊息編號', '書籤');
+                toastr.warning(t('toast_provideValidNumber'), t('toast_bookmark'));
                 return '';
             }
             const success = await addBookmark(id);
-            return success ? `已為訊息 #${id} 添加書籤` : '';
+            return success ? t('toast_slashBookmarkAdded', id) : '';
         },
-        returns: '為指定訊息添加書籤',
+        returns: t('slash_addDesc'),
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: '訊息編號 (例如: 5)',
+                description: t('slash_addArgDesc'),
                 typeList: [ARGUMENT_TYPE.NUMBER],
                 isRequired: true,
             }),
         ],
         helpString: `
             <div>
-                為指定編號的訊息添加書籤。
+                ${t('slash_addHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark-add 5</code></pre>
-                將為訊息 #5 添加書籤。
+                ${t('slash_addUsageHint')}
             </div>
         `,
     }));
@@ -2094,28 +2104,28 @@ function registerSlashCommands() {
         callback: async (args, messageId) => {
             const id = parseInt(messageId);
             if (isNaN(id) || id < 0) {
-                toastr.warning('請提供有效的訊息編號', '書籤');
+                toastr.warning(t('toast_provideValidNumber'), t('toast_bookmark'));
                 return '';
             }
             await removeBookmark(id);
-            return `已移除訊息 #${id} 的書籤`;
+            return t('toast_slashBookmarkRemoved', id);
         },
-        returns: '移除指定訊息的書籤',
+        returns: t('slash_removeDesc'),
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: '訊息編號 (例如: 5)',
+                description: t('slash_addArgDesc'),
                 typeList: [ARGUMENT_TYPE.NUMBER],
                 isRequired: true,
             }),
         ],
         helpString: `
             <div>
-                移除指定編號訊息的書籤。
+                ${t('slash_removeHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark-remove 5</code></pre>
-                將移除訊息 #5 的書籤。
+                ${t('slash_removeUsageHint')}
             </div>
         `,
     }));
@@ -2127,29 +2137,29 @@ function registerSlashCommands() {
         callback: async (args, messageId) => {
             const id = parseInt(messageId);
             if (isNaN(id) || id < 0) {
-                toastr.warning('請提供有效的訊息編號', '書籤');
+                toastr.warning(t('toast_provideValidNumber'), t('toast_bookmark'));
                 return '';
             }
             const currentChatName = getCurrentChatFileName();
             await showQuickPreview(id, currentChatName);
-            return `正在預覽訊息 #${id}`;
+            return t('toast_slashPreviewing', id);
         },
-        returns: '預覽指定訊息',
+        returns: t('slash_previewDesc'),
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: '訊息編號 (例如: 5)',
+                description: t('slash_addArgDesc'),
                 typeList: [ARGUMENT_TYPE.NUMBER],
                 isRequired: true,
             }),
         ],
         helpString: `
             <div>
-                預覽指定編號的訊息內容。
+                ${t('slash_previewHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark-preview 5</code></pre>
-                將顯示訊息 #5 的預覽視窗。
+                ${t('slash_previewUsageHint')}
             </div>
         `,
     }));
@@ -2161,34 +2171,34 @@ function registerSlashCommands() {
         callback: async (args, messageId) => {
             const id = parseInt(messageId);
             if (isNaN(id) || id < 0) {
-                toastr.warning('請提供有效的訊息編號', '書籤');
+                toastr.warning(t('toast_provideValidNumber'), t('toast_bookmark'));
                 return '';
             }
             const currentChatName = getCurrentChatFileName();
             await loadChatAndJump(currentChatName, id);
-            return `已跳轉至訊息 #${id}`;
+            return t('toast_slashJumped', id);
         },
-        returns: '跳轉至指定訊息',
+        returns: t('slash_gotoDesc'),
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: '訊息編號 (例如: 5)',
+                description: t('slash_addArgDesc'),
                 typeList: [ARGUMENT_TYPE.NUMBER],
                 isRequired: true,
             }),
         ],
         helpString: `
             <div>
-                跳轉至指定編號的訊息位置。
+                ${t('slash_gotoHelp')}
             </div>
             <div>
-                <strong>用法：</strong>
+                <strong>${t('slash_panelUsage')}</strong>
                 <pre><code class="language-stscript">/bookmark-goto 5</code></pre>
-                將跳轉到訊息 #5 的位置。
+                ${t('slash_gotoUsageHint')}
             </div>
         `,
     }));
 
-    console.log('Chat Bookmarks: 斜線指令已註冊');
+    console.log('Chat Bookmarks: Slash commands registered');
 }
 
 // ========== 初始化 ==========
@@ -2208,6 +2218,9 @@ async function loadSettings() {
 }
 
 jQuery(async () => {
+    // 載入語言設定
+    await loadLocale(extensionFolderPath);
+    
     await loadSettings();
     addExtensionMenuButton();
     addBookmarkButtonsToAllMessages();
