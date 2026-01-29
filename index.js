@@ -10,6 +10,9 @@ import { selected_group, groups, openGroupChat } from "../../../group-chats.js";
 import { POPUP_TYPE, Popup } from "../../../popup.js";
 import { delay, flashHighlight, waitUntilCondition } from "../../../utils.js";
 import { debounce_timeout } from "../../../constants.js";
+import { SlashCommand } from "../../../slash-commands/SlashCommand.js";
+import { ARGUMENT_TYPE, SlashCommandArgument } from "../../../slash-commands/SlashCommandArgument.js";
+import { SlashCommandParser } from "../../../slash-commands/SlashCommandParser.js";
 
 // 擴充功能基本設定
 const extensionName = "Chat-bookmarks";
@@ -614,14 +617,24 @@ function addBookmarkButtonsToAllMessages() {
 
 /**
  * 更新所有書籤按鈕圖示
+ * @param {boolean} updateSvg - 是否同時更新 SVG 圖示內容（用於圖示類型變更時）
  */
-function updateAllBookmarkIcons() {
+function updateAllBookmarkIcons(updateSvg = false) {
+    const iconType = getSetting('bookmarkIcon');
+    const icon = BOOKMARK_ICONS[iconType] || BOOKMARK_ICONS.star;
+    
     $('#chat .mes').each(function() {
         const mesId = parseInt($(this).attr('mesid'));
         if (!isNaN(mesId)) {
             const isBookmarked = isMessageBookmarked(mesId);
             const starIcon = $(this).find('.chat-bookmark-star');
             starIcon.toggleClass('bookmarked', isBookmarked);
+            
+            // 如果需要更新 SVG 圖示內容
+            if (updateSvg) {
+                starIcon.find('.bookmark-icon-regular').html(icon.regular);
+                starIcon.find('.bookmark-icon-solid').html(icon.solid);
+            }
         }
     });
 }
@@ -1296,7 +1309,7 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
 async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentPopup) {
     const selectedChats = getSelectedChatsForCurrentCharacter();
     
-    const loadingPopup = new Popup('<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在檢查書籤...</div>', POPUP_TYPE.TEXT, '', { okButton: null });
+    const loadingPopup = new Popup('<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> 正在檢查書籤...<br><small style="color: var(--SmartThemeQuoteColor); margin-top: 8px; display: block;">聊天視窗越多查找越慢，請稍後...</small></div>', POPUP_TYPE.TEXT, '', { okButton: null });
     loadingPopup.show();
 
     let chatListHtml = `
@@ -1609,25 +1622,60 @@ async function showBookmarksPanel() {
         }
     });
 
+    // 輔助函式：更新展開按鈕的 active 狀態
+    const updateHeaderButtonsActiveState = () => {
+        const quickActionVisible = dlg.find('.bookmarks-quick-action').is(':visible');
+        const tagsPanelVisible = dlg.find('.bookmarks-tags-panel').is(':visible');
+        const settingsPanelVisible = dlg.find('.bookmarks-settings-panel').is(':visible');
+        
+        dlg.find('.bookmarks-quick-action-btn').toggleClass('active', quickActionVisible);
+        dlg.find('.bookmarks-tags-btn').toggleClass('active', tagsPanelVisible);
+        dlg.find('.bookmarks-settings-btn').toggleClass('active', settingsPanelVisible);
+    };
+
     // 快速操作面板開關
     dlg.find('.bookmarks-quick-action-btn').on('click', () => {
-        dlg.find('.bookmarks-quick-action').slideToggle(200);
+        const panel = dlg.find('.bookmarks-quick-action');
+        const isOpening = !panel.is(':visible');
+        
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
+        panel.slideToggle(200, updateHeaderButtonsActiveState);
+        
+        // 立即更新當前按鈕狀態
+        dlg.find('.bookmarks-quick-action-btn').toggleClass('active', isOpening);
+        dlg.find('.bookmarks-tags-btn').removeClass('active');
+        dlg.find('.bookmarks-settings-btn').removeClass('active');
     });
 
     // 標籤面板開關
     dlg.find('.bookmarks-tags-btn').on('click', () => {
-        dlg.find('.bookmarks-tags-panel').slideToggle(200);
+        const panel = dlg.find('.bookmarks-tags-panel');
+        const isOpening = !panel.is(':visible');
+        
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
+        panel.slideToggle(200, updateHeaderButtonsActiveState);
+        
+        // 立即更新當前按鈕狀態
+        dlg.find('.bookmarks-tags-btn').toggleClass('active', isOpening);
+        dlg.find('.bookmarks-quick-action-btn').removeClass('active');
+        dlg.find('.bookmarks-settings-btn').removeClass('active');
     });
 
     // 設定事件
     dlg.find('.bookmarks-settings-btn').on('click', () => {
-        dlg.find('.bookmarks-settings-panel').slideToggle(200);
+        const panel = dlg.find('.bookmarks-settings-panel');
+        const isOpening = !panel.is(':visible');
+        
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
+        panel.slideToggle(200, updateHeaderButtonsActiveState);
+        
+        // 立即更新當前按鈕狀態
+        dlg.find('.bookmarks-settings-btn').toggleClass('active', isOpening);
+        dlg.find('.bookmarks-quick-action-btn').removeClass('active');
+        dlg.find('.bookmarks-tags-btn').removeClass('active');
     });
     
     // 新增標籤
@@ -1760,7 +1808,7 @@ async function showBookmarksPanel() {
 
     dlg.find('#bookmark-icon-type').on('change', function() {
         setSetting('bookmarkIcon', $(this).val());
-        updateAllBookmarkIcons();
+        updateAllBookmarkIcons(true);  // 傳入 true 以更新 SVG 圖示內容
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
     });
@@ -1792,7 +1840,7 @@ async function showBookmarksPanel() {
         dlg.find(`.bookmark-sort-btn[data-sort="${defaultSettings.sortOrder}"]`).addClass('active');
         
         // 更新圖示
-        updateAllBookmarkIcons();
+        updateAllBookmarkIcons(true);  // 傳入 true 以更新 SVG 圖示內容
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
         
@@ -1955,6 +2003,194 @@ function setupChatObserver() {
     console.log('Chat Bookmarks: MutationObserver 已設置');
 }
 
+// ========== 斜線指令 ==========
+
+/**
+ * 註冊書籤擴充的斜線指令
+ */
+function registerSlashCommands() {
+    // /bookmark-panel - 打開書籤面板
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark-panel',
+        aliases: ['bookmarks', 'bm-panel'],
+        callback: async () => {
+            await showBookmarksPanel();
+            return '書籤面板已開啟';
+        },
+        returns: '開啟書籤面板',
+        helpString: `
+            <div>
+                開啟書籤管理面板，可以查看和管理所有書籤。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark-panel</code></pre>
+            </div>
+        `,
+    }));
+
+    // /bookmark - 為當前（最後一則）訊息添加書籤
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark',
+        aliases: ['bm'],
+        callback: async () => {
+            if (chat.length === 0) {
+                toastr.warning('目前沒有任何訊息', '書籤');
+                return '';
+            }
+            const lastMessageId = chat.length - 1;
+            const success = await addBookmark(lastMessageId);
+            return success ? `已為訊息 #${lastMessageId} 添加書籤` : '';
+        },
+        returns: '為最後一則訊息添加書籤',
+        helpString: `
+            <div>
+                為當前聊天中最後一則訊息添加書籤。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark</code></pre>
+            </div>
+        `,
+    }));
+
+    // /bookmark-add - 為指定訊息添加書籤
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark-add',
+        aliases: ['bm-add'],
+        callback: async (args, messageId) => {
+            const id = parseInt(messageId);
+            if (isNaN(id) || id < 0) {
+                toastr.warning('請提供有效的訊息編號', '書籤');
+                return '';
+            }
+            const success = await addBookmark(id);
+            return success ? `已為訊息 #${id} 添加書籤` : '';
+        },
+        returns: '為指定訊息添加書籤',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: '訊息編號 (例如: 5)',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+                isRequired: true,
+            }),
+        ],
+        helpString: `
+            <div>
+                為指定編號的訊息添加書籤。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark-add 5</code></pre>
+                將為訊息 #5 添加書籤。
+            </div>
+        `,
+    }));
+
+    // /bookmark-remove - 移除指定訊息的書籤
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark-remove',
+        aliases: ['bm-remove', 'bm-del'],
+        callback: async (args, messageId) => {
+            const id = parseInt(messageId);
+            if (isNaN(id) || id < 0) {
+                toastr.warning('請提供有效的訊息編號', '書籤');
+                return '';
+            }
+            await removeBookmark(id);
+            return `已移除訊息 #${id} 的書籤`;
+        },
+        returns: '移除指定訊息的書籤',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: '訊息編號 (例如: 5)',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+                isRequired: true,
+            }),
+        ],
+        helpString: `
+            <div>
+                移除指定編號訊息的書籤。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark-remove 5</code></pre>
+                將移除訊息 #5 的書籤。
+            </div>
+        `,
+    }));
+
+    // /bookmark-preview - 預覽指定訊息
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark-preview',
+        aliases: ['bm-preview'],
+        callback: async (args, messageId) => {
+            const id = parseInt(messageId);
+            if (isNaN(id) || id < 0) {
+                toastr.warning('請提供有效的訊息編號', '書籤');
+                return '';
+            }
+            const currentChatName = getCurrentChatFileName();
+            await showQuickPreview(id, currentChatName);
+            return `正在預覽訊息 #${id}`;
+        },
+        returns: '預覽指定訊息',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: '訊息編號 (例如: 5)',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+                isRequired: true,
+            }),
+        ],
+        helpString: `
+            <div>
+                預覽指定編號的訊息內容。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark-preview 5</code></pre>
+                將顯示訊息 #5 的預覽視窗。
+            </div>
+        `,
+    }));
+
+    // /bookmark-goto - 跳轉至指定訊息
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'bookmark-goto',
+        aliases: ['bm-goto', 'bm-jump'],
+        callback: async (args, messageId) => {
+            const id = parseInt(messageId);
+            if (isNaN(id) || id < 0) {
+                toastr.warning('請提供有效的訊息編號', '書籤');
+                return '';
+            }
+            const currentChatName = getCurrentChatFileName();
+            await loadChatAndJump(currentChatName, id);
+            return `已跳轉至訊息 #${id}`;
+        },
+        returns: '跳轉至指定訊息',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: '訊息編號 (例如: 5)',
+                typeList: [ARGUMENT_TYPE.NUMBER],
+                isRequired: true,
+            }),
+        ],
+        helpString: `
+            <div>
+                跳轉至指定編號的訊息位置。
+            </div>
+            <div>
+                <strong>用法：</strong>
+                <pre><code class="language-stscript">/bookmark-goto 5</code></pre>
+                將跳轉到訊息 #5 的位置。
+            </div>
+        `,
+    }));
+
+    console.log('Chat Bookmarks: 斜線指令已註冊');
+}
+
 // ========== 初始化 ==========
 
 async function loadSettings() {
@@ -1976,6 +2212,7 @@ jQuery(async () => {
     addExtensionMenuButton();
     addBookmarkButtonsToAllMessages();
     setupChatObserver();
+    registerSlashCommands();
 
     $(document).on('click', '.chat-bookmark-star', async function(e) {
         e.stopPropagation();

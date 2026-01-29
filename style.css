@@ -54,12 +54,12 @@
     color: var(--SmartThemeBodyColor);
     order: -999;
     position: relative;
-    width: 1.1em;
-    height: 1.1em;
+    width: 1em;
+    height: 1em;
     user-select: none;
     -webkit-user-select: none;
     caret-color: transparent;
-    top: 1px;
+    top: 1.5px;
 }
 
 .chat-bookmark-star .bookmark-icon-svg {
@@ -69,8 +69,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1em;
-    height: 1em;
+    width: 1.1em;
+    height: 1.1em;
     transition: opacity 0.15s ease;
 }
 
@@ -203,6 +203,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.bookmarks-settings-btn.active,
+.bookmarks-tags-btn.active,
+.bookmarks-quick-action-btn.active {
+    background-color: var(--bookmark-accent-color);
+    color: var(--SmartThemeBlurTintColor);
+    border-color: var(--bookmark-accent-color);
+}
+
+.bookmarks-settings-btn.active i,
+.bookmarks-tags-btn.active i,
+.bookmarks-quick-action-btn.active svg {
+    color: var(--SmartThemeBlurTintColor);
 }
 
 .bookmarks-settings-btn i,
