@@ -1,62 +1,6 @@
 # Chat Bookmarks
 
-[English](#english) | [繁體中文](#繁體中文) | [日本語](#日本語)
-
----
-
-<h2 id="english">English</h2>
-
-A SillyTavern extension that allows you to mark bookmarks on chat messages for quick review of important conversations.
-
-### Features
-
-#### Message Bookmarking
-- Every message has a button to toggle bookmarks
-- Bookmarked messages display with a colored solid icon
-
-#### Bookmark Panel
-- Access from the extension menu (wand icon) in the bottom left corner → select "Bookmarks"
-- View all bookmarks in the current chat
-- Support for filtering and viewing bookmarks across different chat sessions
-
-#### Tag Management
-- Create custom tags with custom colors
-- Assign tags to bookmarks for better organization
-- Filter bookmarks by tags (supports multiple tag selection with OR logic)
-
-#### Message Preview
-- Click any bookmark item to preview that message
-- Preview shows messages after the bookmarked message (configurable range)
-- Support for loading more preview messages (both up and down)
-- Target message is highlighted
-
-#### Quick Jump
-- Jump directly to any bookmarked message
-- Support cross-chat jumping
-- Quick action panel for jumping/bookmarking by message number
-
-#### Customization
-- Accent color selection
-- Multiple bookmark icon styles (Star, Heart, Bookmark, Flag)
-- Configurable preview range and content line clamp
-- Multiple sort options (by message order or bookmark time)
-
-### Slash Commands
-
-| Command | Aliases | Description | Example |
-|---------|---------|-------------|---------|
-| `/bookmark-panel` | `/bookmarks`<br>`/bm-panel` | Open bookmark management panel | `/bookmark-panel` |
-| `/bookmark` | `/bm` | Bookmark the last message | `/bookmark` |
-| `/bookmark-add <id>` | `/bm-add` | Bookmark a specific message | `/bookmark-add 5` |
-| `/bookmark-remove <id>` | `/bm-remove`<br>`/bm-del` | Remove bookmark from a message | `/bookmark-remove 5` |
-| `/bookmark-preview <id>` | `/bm-preview` | Preview a specific message | `/bookmark-preview 5` |
-| `/bookmark-goto <id>` | `/bm-goto`<br>`/bm-jump` | Jump to a specific message | `/bookmark-goto 5` |
-
-**Tip:** These commands can be used in Quick Reply or STscript.
-
-### Notes
-- Having many chat sessions may slow down the panel loading and bookmark searching
-- Cross-chat jumping or jumping to distant messages requires loading time; avoid operating during this process
+[繁體中文](#繁體中文) | [English](#english)
 
 ---
 
@@ -116,56 +60,57 @@ A SillyTavern extension that allows you to mark bookmarks on chat messages for q
 
 ---
 
-<h2 id="日本語">日本語</h2>
+<h2 id="english">English</h2>
 
-チャットメッセージにブックマークを付けて、重要な会話を素早く振り返ることができる SillyTavern 拡張機能です。
+A SillyTavern extension that allows you to mark bookmarks on chat messages for quick review of important conversations.
 
-### 機能
+### Features
 
-#### メッセージブックマーク
-- 各メッセージにブックマークの切り替えボタンがあります
-- ブックマークされたメッセージは色付きのアイコンで表示されます
+#### Message Bookmarking
+- Every message has a button to toggle bookmarks
+- Bookmarked messages display with a colored solid icon
 
-#### ブックマークパネル
-- 左下の拡張機能メニュー（杖アイコン）から「ブックマーク」を選択
-- 現在のチャットのすべてのブックマークを表示
-- 異なるチャットセッション間でブックマークのフィルタリングと表示をサポート
+#### Bookmark Panel
+- Access from the extension menu (wand icon) in the bottom left corner → select "Bookmarks"
+- View all bookmarks in the current chat
+- Support for filtering and viewing bookmarks across different chat sessions
 
-#### タグ管理
-- カスタムカラーでカスタムタグを作成
-- ブックマークにタグを割り当てて整理
-- タグでブックマークをフィルタリング（複数選択、OR ロジックをサポート）
+#### Tag Management
+- Create custom tags with custom colors
+- Assign tags to bookmarks for better organization
+- Filter bookmarks by tags (supports multiple tag selection with OR logic)
 
-#### メッセージプレビュー
-- ブックマーク項目をクリックしてメッセージをプレビュー
-- ブックマークされたメッセージ以降のメッセージを表示（範囲は設定可能）
-- 上下方向にプレビューメッセージを追加読み込み可能
-- 対象メッセージはハイライト表示
+#### Message Preview
+- Click any bookmark item to preview that message
+- Preview shows messages after the bookmarked message (configurable range)
+- Support for loading more preview messages (both up and down)
+- Target message is highlighted
 
-#### クイックジャンプ
-- ブックマークされたメッセージに直接ジャンプ
-- チャット間ジャンプをサポート
-- クイックアクションパネルでメッセージ番号によるジャンプ/ブックマーク
+#### Quick Jump
+- Jump directly to any bookmarked message
+- Support cross-chat jumping
+- Quick action panel for jumping/bookmarking by message number
 
-#### カスタマイズ
-- アクセントカラーの選択
-- 複数のブックマークアイコンスタイル（星、ハート、ブックマーク、フラグ）
-- プレビュー範囲とコンテンツ行数制限を設定可能
-- 複数のソートオプション（メッセージ順またはブックマーク時間順）
+#### Customization
+- Accent color selection
+- Multiple bookmark icon styles (Star, Heart, Bookmark, Flag)
+- Configurable preview range and content line clamp
+- Multiple sort options (by message order or bookmark time)
 
-### スラッシュコマンド
+### Slash Commands
 
-| コマンド | エイリアス | 説明 | 例 |
-|----------|------------|------|-----|
-| `/bookmark-panel` | `/bookmarks`<br>`/bm-panel` | ブックマーク管理パネルを開く | `/bookmark-panel` |
-| `/bookmark` | `/bm` | 最後のメッセージをブックマーク | `/bookmark` |
-| `/bookmark-add <番号>` | `/bm-add` | 指定メッセージをブックマーク | `/bookmark-add 5` |
-| `/bookmark-remove <番号>` | `/bm-remove`<br>`/bm-del` | 指定メッセージのブックマークを削除 | `/bookmark-remove 5` |
-| `/bookmark-preview <番号>` | `/bm-preview` | 指定メッセージをプレビュー | `/bookmark-preview 5` |
-| `/bookmark-goto <番号>` | `/bm-goto`<br>`/bm-jump` | 指定メッセージにジャンプ | `/bookmark-goto 5` |
+| Command | Aliases | Description | Example |
+|---------|---------|-------------|---------|
+| `/bookmark-panel` | `/bookmarks`<br>`/bm-panel` | Open bookmark management panel | `/bookmark-panel` |
+| `/bookmark` | `/bm` | Bookmark the last message | `/bookmark` |
+| `/bookmark-add <id>` | `/bm-add` | Bookmark a specific message | `/bookmark-add 5` |
+| `/bookmark-remove <id>` | `/bm-remove`<br>`/bm-del` | Remove bookmark from a message | `/bookmark-remove 5` |
+| `/bookmark-preview <id>` | `/bm-preview` | Preview a specific message | `/bookmark-preview 5` |
+| `/bookmark-goto <id>` | `/bm-goto`<br>`/bm-jump` | Jump to a specific message | `/bookmark-goto 5` |
 
-**ヒント：** これらのコマンドはクイックリプライや STscript で使用できます。
+**Tip:** These commands can be used in Quick Reply or STscript.
 
-### 注意事項
-- チャットセッションが多いとパネルの読み込みとブックマーク検索が遅くなる場合があります
-- チャット間ジャンプや遠いメッセージへのジャンプには読み込み時間が必要です。この間は操作を控えてください
+### Notes
+- Having many chat sessions may slow down the panel loading and bookmark searching
+- Cross-chat jumping or jumping to distant messages requires loading time; avoid operating during this process
+
