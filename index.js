@@ -233,7 +233,11 @@ async function saveChatData(chatFileName, chatData) {
 
 /**
  * 取得當前聊天的書籤
- * 會自動過濾掉從其他聊天繼承來的書籤（例如分支創建時複製的書籤）
+ * 只返回明確屬於當前聊天的書籤（originChatFileName 與當前聊天檔案名稱相同）
+ * 
+ * 注意：此函式假設 cleanupInheritedBookmarks() 已在聊天載入時執行，
+ * 因此所有有效書籤都應該已經有正確的 originChatFileName。
+ * 對於分支聊天，只會返回在該分支中創建的書籤。
  */
 function getCurrentChatBookmarks() {
     if (!chat_metadata) return [];
@@ -242,14 +246,23 @@ function getCurrentChatBookmarks() {
     }
     
     const currentChatFileName = getCurrentChatFileName();
+    if (!currentChatFileName) return [];
     
     // 過濾出屬於當前聊天的書籤
     // 書籤有效條件：
-    // 1. 書籤沒有 originChatFileName（舊版書籤，向下相容）
-    // 2. 書籤的 originChatFileName 與當前聊天檔案名稱相同
-    return chat_metadata.chat_bookmarks.filter(bookmark => {
-        return !bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName;
-    });
+    // 1. 對於有 main_chat 的分支聊天：必須 originChatFileName === currentChatFileName
+    // 2. 對於主聊天：書籤沒有 originChatFileName（舊版書籤，向下相容）或 originChatFileName === currentChatFileName
+    if (chat_metadata.main_chat) {
+        // 分支聊天：嚴格匹配
+        return chat_metadata.chat_bookmarks.filter(bookmark => 
+            bookmark.originChatFileName === currentChatFileName
+        );
+    } else {
+        // 主聊天：允許舊版書籤
+        return chat_metadata.chat_bookmarks.filter(bookmark => 
+            !bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName
+        );
+    }
 }
 
 /**
@@ -264,28 +277,69 @@ function getCurrentChatBookmarksRaw() {
 /**
  * 清理從其他聊天繼承來的書籤
  * 當偵測到聊天是從分支創建的，會自動清理不屬於此聊天的書籤
+ * 
+ * 分支創建邏輯說明：
+ * 當 SillyTavern 創建分支時，會複製 chat_metadata（包含 chat_bookmarks），
+ * 並設置 chat_metadata.main_chat 指向原始聊天。
+ * 因此我們可以通過 main_chat 的存在來判斷這是否為分支聊天。
  */
 async function cleanupInheritedBookmarks() {
     if (!chat_metadata || !chat_metadata.chat_bookmarks) return;
     
     const currentChatFileName = getCurrentChatFileName();
+    if (!currentChatFileName) return;
+    
     const rawBookmarks = chat_metadata.chat_bookmarks;
+    let needsSave = false;
     
-    // 找出繼承的書籤（originChatFileName 與當前聊天不同）
-    const inheritedBookmarks = rawBookmarks.filter(b => 
-        b.originChatFileName && b.originChatFileName !== currentChatFileName
-    );
-    
-    if (inheritedBookmarks.length > 0) {
-        console.log(`Chat Bookmarks: 偵測到 ${inheritedBookmarks.length} 個繼承的書籤，正在清理...`);
+    // 情況1：這是一個分支聊天（有 main_chat），需要清理所有來自父聊天的書籤
+    // 分支聊天不應該繼承任何書籤，因為分支後的訊息 ID 相同但內容可能完全不同
+    if (chat_metadata.main_chat) {
+        // 找出需要清理的書籤：
+        // - 來自其他聊天的書籤（originChatFileName 不同）
+        // - 或者是沒有 originChatFileName 的舊版書籤（這些是從父聊天複製過來的）
+        const bookmarksToRemove = rawBookmarks.filter(b => {
+            // 如果有 originChatFileName 且是當前聊天的，保留
+            if (b.originChatFileName === currentChatFileName) return false;
+            // 其他情況都清理（包括沒有 originChatFileName 或 originChatFileName 不同的）
+            return true;
+        });
         
-        // 只保留屬於當前聊天的書籤
-        chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
-            !b.originChatFileName || b.originChatFileName === currentChatFileName
+        if (bookmarksToRemove.length > 0) {
+            console.log(`Chat Bookmarks: 分支聊天偵測到 ${bookmarksToRemove.length} 個繼承的書籤，正在清理...`);
+            chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
+                b.originChatFileName === currentChatFileName
+            );
+            needsSave = true;
+        }
+    } 
+    // 情況2：這是主聊天，為舊版書籤補上 originChatFileName
+    else {
+        const oldBookmarks = rawBookmarks.filter(b => !b.originChatFileName);
+        if (oldBookmarks.length > 0) {
+            console.log(`Chat Bookmarks: 為 ${oldBookmarks.length} 個舊版書籤補上 originChatFileName`);
+            oldBookmarks.forEach(b => {
+                b.originChatFileName = currentChatFileName;
+            });
+            needsSave = true;
+        }
+        
+        // 也清理任何不屬於當前聊天的書籤（可能是異常情況）
+        const inheritedBookmarks = rawBookmarks.filter(b => 
+            b.originChatFileName && b.originChatFileName !== currentChatFileName
         );
-        
+        if (inheritedBookmarks.length > 0) {
+            console.log(`Chat Bookmarks: 清理 ${inheritedBookmarks.length} 個不屬於此聊天的書籤`);
+            chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
+                !b.originChatFileName || b.originChatFileName === currentChatFileName
+            );
+            needsSave = true;
+        }
+    }
+    
+    if (needsSave) {
         await saveChatConditional();
-        console.log(`Chat Bookmarks: 繼承的書籤已清理`);
+        console.log(`Chat Bookmarks: 書籤清理完成`);
     }
 }
 
@@ -394,10 +448,22 @@ async function removeBookmark(messageId) {
     const currentChatFileName = getCurrentChatFileName();
     
     // 找到屬於當前聊天的書籤
-    const index = rawBookmarks.findIndex(b => 
-        b.messageId === messageId && 
-        (!b.originChatFileName || b.originChatFileName === currentChatFileName)
-    );
+    // 對於分支聊天，必須嚴格匹配 originChatFileName
+    // 對於主聊天，允許舊版書籤（沒有 originChatFileName）
+    let index;
+    if (chat_metadata.main_chat) {
+        // 分支聊天：嚴格匹配
+        index = rawBookmarks.findIndex(b => 
+            b.messageId === messageId && 
+            b.originChatFileName === currentChatFileName
+        );
+    } else {
+        // 主聊天：允許舊版書籤
+        index = rawBookmarks.findIndex(b => 
+            b.messageId === messageId && 
+            (!b.originChatFileName || b.originChatFileName === currentChatFileName)
+        );
+    }
 
     if (index === -1) {
         toastr.warning(t('toast_bookmarkNotFound'), t('toast_bookmark'));
