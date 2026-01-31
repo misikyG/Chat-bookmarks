@@ -7,14 +7,13 @@
     --tag-color: #ffe084;
 }
 
-/* ===== 通用 Scrollbar 樣式 ===== */
+/* ===== 通用 Scrollbar 樣式 (使用官方設定) ===== */
 .bookmarks-content::-webkit-scrollbar,
 .bookmarks-tabs-scrollable::-webkit-scrollbar,
 .bookmark-preview-messages::-webkit-scrollbar,
 .quick-preview-text::-webkit-scrollbar,
 .add-chat-tab-list::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 0.7rem;
 }
 
 .bookmarks-content::-webkit-scrollbar-track,
@@ -22,9 +21,15 @@
 .bookmark-preview-messages::-webkit-scrollbar-track,
 .quick-preview-text::-webkit-scrollbar-track,
 .add-chat-tab-list::-webkit-scrollbar-track {
-    background: var(--SmartThemeBlurTintColor);
-    border-radius: 5px;
-    border: none;
+    cursor: default;
+}
+
+.bookmarks-content::-webkit-scrollbar-track:hover,
+.bookmarks-tabs-scrollable::-webkit-scrollbar-track:hover,
+.bookmark-preview-messages::-webkit-scrollbar-track:hover,
+.quick-preview-text::-webkit-scrollbar-track:hover,
+.add-chat-tab-list::-webkit-scrollbar-track:hover {
+    background-color: rgba(126, 126, 126, 0.2);
 }
 
 .bookmarks-content::-webkit-scrollbar-thumb,
@@ -32,17 +37,21 @@
 .bookmark-preview-messages::-webkit-scrollbar-thumb,
 .quick-preview-text::-webkit-scrollbar-thumb,
 .add-chat-tab-list::-webkit-scrollbar-thumb {
-    background: var(--bookmark-accent-color);
-    border-radius: 5px;
-    border: none;
+    background-color: var(--grey7070a, rgba(175, 175, 175, 0.7));
+    box-shadow: inset 0 0 0 1px var(--black50a, rgba(0, 0, 0, 0.5));
+    border-radius: 10px;
+    background-clip: content-box;
+    border: 2px solid transparent;
+    min-height: 40px;
+    cursor: grab;
 }
 
-.bookmarks-content::-webkit-scrollbar-thumb:hover,
-.bookmarks-tabs-scrollable::-webkit-scrollbar-thumb:hover,
-.bookmark-preview-messages::-webkit-scrollbar-thumb:hover,
-.quick-preview-text::-webkit-scrollbar-thumb:hover,
-.add-chat-tab-list::-webkit-scrollbar-thumb:hover {
-    background: var(--SmartThemeQuoteColor);
+.bookmarks-content::-webkit-scrollbar-thumb:active,
+.bookmarks-tabs-scrollable::-webkit-scrollbar-thumb:active,
+.bookmark-preview-messages::-webkit-scrollbar-thumb:active,
+.quick-preview-text::-webkit-scrollbar-thumb:active,
+.add-chat-tab-list::-webkit-scrollbar-thumb:active {
+    cursor: grabbing;
 }
 
 /* ===== 書籤星號按鈕 ===== */
