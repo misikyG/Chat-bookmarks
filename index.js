@@ -15,7 +15,6 @@ import { ARGUMENT_TYPE, SlashCommandArgument } from "../../../slash-commands/Sla
 import { SlashCommandParser } from "../../../slash-commands/SlashCommandParser.js";
 import { loadLocale, t } from "./i18n.js";
 
-// 擴充功能基本設定
 const extensionName = "Chat-bookmarks";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
@@ -60,9 +59,11 @@ const defaultSettings = {
     bookmarkIcon: 'star',
     selectedChatsByCharacter: {},
     previewLineClamp: 15,
-    sortOrder: 'messageAsc', // messageAsc, messageDesc, bookmarkNew, bookmarkOld
-    customTags: [], // 自定義標籤列表 [{id, name, color}]
-    activeTagFilters: [], // 當前啟用的標籤篩選 (tag id 陣列)
+    sortOrder: 'messageAsc',
+    customTags: [],
+    activeTagFilters: [],
+    separateTagsByCharacter: true,
+    searchQuery: '',
 };
 
 // 當前預覽狀態
@@ -248,7 +249,52 @@ function createBookmarkData(message, messageId) {
         timestamp: Date.now(),
         sender: message.name || (message.is_user ? 'You' : 'Character'),
         isUser: message.is_user || false,
+        customName: '', // 書籤自訂名稱
     };
+}
+
+/**
+ * 更新書籤的自訂名稱
+ */
+async function updateBookmarkName(messageId, newName, chatFileName = null) {
+    const currentChatName = getCurrentChatFileName();
+    
+    if (!chatFileName || chatFileName === currentChatName) {
+
+        const bookmarks = getCurrentChatBookmarks();
+        const bookmark = bookmarks.find(b => b.messageId === messageId);
+        if (bookmark) {
+            bookmark.customName = newName;
+            await saveChatConditional();
+        }
+    } else {
+        const chatData = await fetchChatData(chatFileName);
+        if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
+        
+        const metadata = chatData[0].chat_metadata || {};
+        const bookmarks = metadata.chat_bookmarks || [];
+        const bookmark = bookmarks.find(b => b.messageId === messageId);
+        if (bookmark) {
+            bookmark.customName = newName;
+            chatData[0].chat_metadata = metadata;
+            await saveChatData(chatFileName, chatData);
+        }
+    }
+}
+
+/**
+ * 根據搜索關鍵字過濾書籤
+ */
+function filterBookmarksBySearch(bookmarks, query) {
+    if (!query || query.trim() === '') return bookmarks;
+    
+    const lowerQuery = query.toLowerCase().trim();
+    return bookmarks.filter(b => {
+        if (b.customName && b.customName.toLowerCase().includes(lowerQuery)) return true;
+        if (b.text && b.text.toLowerCase().includes(lowerQuery)) return true;
+        if (b.sender && b.sender.toLowerCase().includes(lowerQuery)) return true;
+        return false;
+    });
 }
 
 /**
@@ -366,8 +412,8 @@ async function removeBookmarkFromChat(chatFileName, messageId) {
 
 /**
  * 排序書籤
- * @param {Array} bookmarks - 書籤陣列
- * @param {string} sortOrder - 排序方式: messageAsc, messageDesc, bookmarkNew, bookmarkOld
+ * @param {Array} bookmarks
+ * @param {string} sortOrder
  */
 function sortBookmarks(bookmarks, sortOrder) {
     if (!bookmarks || bookmarks.length === 0) return bookmarks;
@@ -375,19 +421,18 @@ function sortBookmarks(bookmarks, sortOrder) {
     const sorted = [...bookmarks];
     switch (sortOrder) {
         case 'messageAsc':
-            // 訊息最舊↑ (訊息ID由小到大)
             sorted.sort((a, b) => a.messageId - b.messageId);
             break;
         case 'messageDesc':
-            // 訊息最新↑ (訊息ID由大到小)
+
             sorted.sort((a, b) => b.messageId - a.messageId);
             break;
         case 'bookmarkNew':
-            // 最新書籤↑ (書籤時間由新到舊)
+
             sorted.sort((a, b) => b.timestamp - a.timestamp);
             break;
         case 'bookmarkOld':
-            // 最舊書籤↑ (書籤時間由舊到新)
+
             sorted.sort((a, b) => a.timestamp - b.timestamp);
             break;
         default:
@@ -414,20 +459,71 @@ function saveCustomTags(tags) {
 
 /**
  * 新增自訂標籤
+ * @param {string} name
+ * @param {string} color
+ * @param {string} scope
  */
-function addCustomTag(name, color = '#ffe084') {
+function addCustomTag(name, color = '#ffe084', scope = 'global') {
     const tags = getCustomTags();
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    tags.push({ id, name, color });
+    const newTag = { id, name, color, scope };
+    
+    // 如果是角色專屬標籤，記錄當前角色的 key
+    if (scope === 'character') {
+        newTag.characterKey = getCurrentCharacterKey();
+    }
+    
+    tags.push(newTag);
     saveCustomTags(tags);
-    return { id, name, color };
+    return newTag;
+}
+
+/**
+ * 更新標籤的 scope 屬性
+ */
+function updateTagScope(tagId, newScope) {
+    const tags = getCustomTags();
+    const tag = tags.find(t => t.id === tagId);
+    if (tag) {
+        tag.scope = newScope;
+        if (newScope === 'character') {
+            tag.characterKey = getCurrentCharacterKey();
+        } else {
+            delete tag.characterKey;
+        }
+        saveCustomTags(tags);
+    }
+}
+
+/**
+ * 取得對當前角色可見的標籤
+ */
+function getVisibleTags() {
+    const tags = getCustomTags();
+    const currentCharKey = getCurrentCharacterKey();
+    
+    return tags.filter(tag => {
+        if (!tag.scope || tag.scope === 'global') return true;
+        if (tag.scope === 'character' && tag.characterKey === currentCharKey) return true;
+        return false;
+    });
+}
+
+/**
+ * 取得標籤的範圍標記文字
+ */
+function getTagScopeLabel(tag) {
+    if (!tag.scope || tag.scope === 'global') {
+        return t('tag_scopeGlobal');
+    }
+    return t('tag_scopeCharacter');
 }
 
 /**
  * 刪除自訂標籤 (同時移除所有書籤上的此標籤)
  */
 async function deleteCustomTag(tagId) {
-    // 從設定中移除標籤
+
     const tags = getCustomTags();
     const index = tags.findIndex(t => t.id === tagId);
     if (index > -1) {
@@ -435,7 +531,6 @@ async function deleteCustomTag(tagId) {
         saveCustomTags(tags);
     }
     
-    // 如果正在篩選此標籤，從篩選中移除
     const activeFilters = getSetting('activeTagFilters') || [];
     const filterIndex = activeFilters.indexOf(tagId);
     if (filterIndex > -1) {
@@ -443,7 +538,6 @@ async function deleteCustomTag(tagId) {
         setSetting('activeTagFilters', activeFilters);
     }
     
-    // 移除當前聊天書籤上的此標籤
     const bookmarks = getCurrentChatBookmarks();
     bookmarks.forEach(b => {
         if (b.tags && Array.isArray(b.tags)) {
@@ -463,7 +557,6 @@ async function addTagToBookmark(messageId, tagId, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
     
     if (!chatFileName || chatFileName === currentChatName) {
-        // 當前聊天
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
         if (bookmark) {
@@ -474,7 +567,6 @@ async function addTagToBookmark(messageId, tagId, chatFileName = null) {
             }
         }
     } else {
-        // 其他聊天
         const chatData = await fetchChatData(chatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
         
@@ -499,7 +591,6 @@ async function removeTagFromBookmark(messageId, tagId, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
     
     if (!chatFileName || chatFileName === currentChatName) {
-        // 當前聊天
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
         if (bookmark && bookmark.tags) {
@@ -510,7 +601,6 @@ async function removeTagFromBookmark(messageId, tagId, chatFileName = null) {
             }
         }
     } else {
-        // 其他聊天
         const chatData = await fetchChatData(chatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
         
@@ -533,7 +623,6 @@ async function removeTagFromBookmark(messageId, tagId, chatFileName = null) {
  */
 function filterBookmarksByTag(bookmarks, tagFilters) {
     if (!tagFilters || tagFilters.length === 0) return bookmarks;
-    // 書籤只要包含任一個被選中的標籤即可顯示 (OR 邏輯)
     return bookmarks.filter(b => b.tags && b.tags.some(t => tagFilters.includes(t)));
 }
 
@@ -627,7 +716,7 @@ function addBookmarkButtonsToAllMessages() {
 
 /**
  * 更新所有書籤按鈕圖示
- * @param {boolean} updateSvg - 是否同時更新 SVG 圖示內容（用於圖示類型變更時）
+ * @param {boolean} updateSvg
  */
 function updateAllBookmarkIcons(updateSvg = false) {
     const iconType = getSetting('bookmarkIcon');
@@ -640,7 +729,6 @@ function updateAllBookmarkIcons(updateSvg = false) {
             const starIcon = $(this).find('.chat-bookmark-star');
             starIcon.toggleClass('bookmarked', isBookmarked);
             
-            // 如果需要更新 SVG 圖示內容
             if (updateSvg) {
                 starIcon.find('.bookmark-icon-regular').html(icon.regular);
                 starIcon.find('.bookmark-icon-solid').html(icon.solid);
@@ -675,20 +763,17 @@ async function loadMessagesUntilTarget(targetMessageId, maxAttempts = 50) {
     const { showMoreMessages } = await import("../../../../script.js");
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        // 檢查目標訊息是否已經載入
         const messageElement = $(`#chat .mes[mesid="${targetMessageId}"]`);
         if (messageElement.length) {
             return true;
         }
         
-        // 檢查「顯示更多訊息」按鈕是否存在
         const showMoreButton = $('#show_more_messages');
         if (!showMoreButton.length) {
-            // 無法再載入更多訊息
+
             return false;
         }
         
-        // 載入更多訊息
         await showMoreMessages();
         await delay(100);
     }
@@ -702,7 +787,6 @@ async function loadMessagesUntilTarget(targetMessageId, maxAttempts = 50) {
 async function scrollToMessage(messageId) {
     let messageElement = $(`#chat .mes[mesid="${messageId}"]`);
     
-    // 如果訊息不在當前載入範圍內，嘗試載入更多
     if (!messageElement.length) {
         toastr.info(t('toast_loadingMoreMessages'), t('toast_bookmark'), { timeOut: 2000 });
         const loaded = await loadMessagesUntilTarget(messageId);
@@ -728,13 +812,11 @@ async function scrollToMessage(messageId) {
 async function loadChatAndJump(chatFileName, messageId) {
     const currentChatName = getCurrentChatFileName();
 
-    // 顯示常駐警告通知
     const warningToast = toastr.warning(t('toast_jumpWarning'), t('toast_jumpTitle'), {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: false
     });
 
     if (chatFileName === currentChatName) {
-        // 同聊天內跳轉
         try {
             await scrollToMessage(messageId);
             toastr.clear(warningToast);
@@ -746,7 +828,6 @@ async function loadChatAndJump(chatFileName, messageId) {
         return;
     }
 
-    // 跨聊天跳轉
     try {
         await saveChatConditional();
 
@@ -779,7 +860,6 @@ async function loadChatAndJump(chatFileName, messageId) {
 function formatMessageText(text) {
     if (!text) return '';
     
-    // 儲存需要保護的區塊
     const protectedBlocks = [];
     let blockIndex = 0;
     
@@ -791,104 +871,87 @@ function formatMessageText(text) {
     
     let formatted = text;
     
-    // 1. 保護 HTML details 標籤
     formatted = formatted.replace(/<details[^>]*>[\s\S]*?<\/details>/gi, (match) => {
         return protect(`<div class="preview-details-wrapper">${match}</div>`);
     });
     
-    // 2. 保護 code blocks (```)
     formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
         const escapedCode = escapeHtml(code.trim());
         return protect(`<div class="preview-code-block"><code>${escapedCode}</code></div>`);
     });
     
-    // 3. 保護 inline code (`)
     formatted = formatted.replace(/`([^`\n]+)`/g, (match, code) => {
         const escapedCode = escapeHtml(code);
         return protect(`<span class="preview-inline-code">${escapedCode}</span>`);
     });
     
-    // 4. 跳脫 HTML 特殊字元
     formatted = escapeHtml(formatted);
     
-    // 5. 處理換行
     formatted = formatted.replace(/\n/g, '<br>');
     
-    // 6. 處理水平分隔線 (--- 或 ***)
     formatted = formatted.replace(/(?:^|<br>)([-*]{3,})(?=<br>|$)/g, (match, line) => {
         return protect(`<hr class="preview-hr">`);
     });
     
-    // 7. 處理 Markdown 標題 (# ## ###)
     formatted = formatted.replace(/(?:^|(<br>))(#{1,6})\s+(.+?)(?=<br>|$)/g, (match, br, hashes, content) => {
         const level = hashes.length;
         const prefix = br || '';
         return prefix + protect(`<div class="preview-heading preview-h${level}">${content}</div>`);
     });
     
-    // 8. 處理 blockquote (> 開頭)
     formatted = formatted.replace(/(?:^|(<br>))&gt;\s?(.+?)(?=<br>|$)/g, (match, br, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-blockquote">${content}</div>`);
     });
     
-    // 9. 處理無序列表 (- 或 * 開頭，但不是分隔線)
     formatted = formatted.replace(/(?:^|(<br>))[-*]\s+(.+?)(?=<br>|$)/g, (match, br, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-list-item">• ${content}</div>`);
     });
     
-    // 10. 處理有序列表 (1. 2. 等)
     formatted = formatted.replace(/(?:^|(<br>))(\d+)\.\s+(.+?)(?=<br>|$)/g, (match, br, num, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-list-item preview-list-ordered">${num}. ${content}</div>`);
     });
     
-    // 11. 處理粗體 **text** (先於斜體)
     formatted = formatted.replace(/\*\*([^*]+)\*\*/g, (match, content) => {
         return protect(`<strong>${content}</strong>`);
     });
     
-    // 12. 處理底線 __text__ (HTML underline)
     formatted = formatted.replace(/__([^_]+)__/g, (match, content) => {
         return protect(`<u class="underline-text">${content}</u>`);
     });
     
-    // 13. 處理斜體 *text* (動作文字)
     formatted = formatted.replace(/\*([^*\n]+)\*/g, (match, content) => {
         return protect(`<em class="action-text">${content}</em>`);
     });
     
-    // 14. 處理各種引號樣式
-    // 直角引號「」
     formatted = formatted.replace(/「([^」]+)」/g, (match, content) => {
         return protect(`<span class="dialogue-text">「${content}」</span>`);
     });
-    // 雙直角引號『』
+
     formatted = formatted.replace(/『([^』]+)』/g, (match, content) => {
         return protect(`<span class="dialogue-text">『${content}』</span>`);
     });
-    // 書名號《》
+
     formatted = formatted.replace(/《([^》]+)》/g, (match, content) => {
         return protect(`<span class="dialogue-text">《${content}》</span>`);
     });
-    // 法式引號 « »
+
     formatted = formatted.replace(/«([^»]+)»/g, (match, content) => {
         return protect(`<span class="dialogue-text">«${content}»</span>`);
     });
-    // 彎曲雙引號 " "
+
     formatted = formatted.replace(/"([^"]+)"/g, (match, content) => {
         return protect(`<span class="dialogue-text">"${content}"</span>`);
     });
-    // 標準雙引號 (被跳脫成 &quot;)
+ 
     formatted = formatted.replace(/&quot;([^&]+?)&quot;/g, (match, content) => {
         return protect(`<span class="dialogue-text">"${content}"</span>`);
     });
     
-    // 15. 處理多空格
     formatted = formatted.replace(/  /g, '&nbsp; ');
     
-    // 16. 恢復所有保護的區塊
     protectedBlocks.forEach(({ placeholder, content }) => {
         formatted = formatted.replace(placeholder, content);
     });
@@ -947,7 +1010,6 @@ async function showBookmarkPreview(messageId, chatFileName) {
     const range = getSetting('previewRange');
     let previewData, chatMessages = null;
 
-    // 預設只載入書籤訊息之後的訊息，讓書籤訊息顯示在頂部
     currentPreviewState = { chatFileName, messageId, startOffset: 0, endOffset: range, chatData: null };
 
     if (chatFileName === currentChatName) {
@@ -1007,12 +1069,11 @@ async function showBookmarkPreview(messageId, chatFileName) {
         const msgArray = currentPreviewState.chatData || chat;
         const containerElement = messagesContainer[0];
 
-        // 保存當前滾動位置的參考訊息和相對位置
         let scrollRefMsgId = null;
         let scrollRefOffset = 0;
         
         if (direction === 'up') {
-            // 向上載入時，保存當前最上方可見訊息的位置
+
             const allMsgs = messagesContainer.find('.bookmark-preview-message');
             for (let i = 0; i < allMsgs.length; i++) {
                 const msg = allMsgs[i];
@@ -1031,7 +1092,6 @@ async function showBookmarkPreview(messageId, chatFileName) {
             dlg.find('.load-more-up').toggleClass('hidden', !newPreviewData.canLoadMore.up);
             dlg.find('.load-more-down').toggleClass('hidden', !newPreviewData.canLoadMore.down);
 
-            // 向上載入時，恢復參考訊息的相對位置
             if (scrollRefMsgId !== null) {
                 const refMsg = messagesContainer.find(`[data-msgid="${scrollRefMsgId}"]`);
                 if (refMsg.length) {
@@ -1040,7 +1100,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
                 }
             }
         } else {
-            // 向下載入時，保存當前滾動高度
+
             const scrollTop = containerElement.scrollTop;
             currentPreviewState.endOffset += 5;
             
@@ -1049,20 +1109,17 @@ async function showBookmarkPreview(messageId, chatFileName) {
             dlg.find('.load-more-up').toggleClass('hidden', !newPreviewData.canLoadMore.up);
             dlg.find('.load-more-down').toggleClass('hidden', !newPreviewData.canLoadMore.down);
             
-            // 向下載入時，保持原本滾動位置（不跳回書籤訊息）
             containerElement.scrollTop = scrollTop;
         }
     });
 
     await popup.show();
     
-    // 彈窗顯示後滾動到頂部
     setTimeout(() => {
         const messagesContainer = dlg.find('.bookmark-preview-messages')[0];
         if (messagesContainer) messagesContainer.scrollTop = 0;
     }, 100);
     
-    // 清理預覽狀態以釋放記憶體
     currentPreviewState = { chatFileName: '', messageId: 0, startOffset: 0, endOffset: 0, chatData: null };
 }
 
@@ -1075,14 +1132,12 @@ async function showQuickPreview(messageId, chatFileName) {
     let sender = '';
     let isUser = false;
     
-    // 顯示載入中通知
     const loadingToast = toastr.info(t('toast_previewLoading', messageId), t('toast_bookmark'), {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: true
     });
     
     try {
         if (chatFileName === currentChatName) {
-            // 從當前聊天取得訊息
             if (messageId >= chat.length) {
                 toastr.clear(loadingToast);
                 toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark'));
@@ -1092,7 +1147,6 @@ async function showQuickPreview(messageId, chatFileName) {
             sender = message.name || (message.is_user ? 'You' : 'Character');
             isUser = message.is_user || false;
         } else {
-            // 從其他聊天取得訊息
             const chatData = await fetchChatData(chatFileName);
             if (!chatData || !Array.isArray(chatData)) {
                 toastr.clear(loadingToast);
@@ -1122,7 +1176,6 @@ async function showQuickPreview(messageId, chatFileName) {
             </div>
         `;
         
-        // 清除載入通知
         toastr.clear(loadingToast);
         
         const popup = new Popup(previewContent, POPUP_TYPE.TEXT, '', { wide: true, okButton: t('btn_close') });
@@ -1144,14 +1197,27 @@ function createBookmarkItemHtml(bookmark) {
     const chatDisplayName = bookmark.chatFileName?.replace('.jsonl', '') || '';
     const lineClamp = getSetting('previewLineClamp');
     const tagsHtml = getBookmarkTagsHtml(bookmark, bookmark.chatFileName);
-    const customTags = getCustomTags();
+    const visibleTags = getVisibleTags();
 
-    // 建立添加標籤的下拉選單選項
     const existingTags = bookmark.tags || [];
-    const availableTags = customTags.filter(t => !existingTags.includes(t.id));
+    const availableTags = visibleTags.filter(tg => !existingTags.includes(tg.id));
     const addTagOptionsHtml = availableTags.length > 0 
-        ? availableTags.map(t => `<div class="add-tag-option" data-tagid="${t.id}" style="--tag-color: ${t.color};"><span class="tag-dot"></span>${escapeHtml(t.name)}</div>`).join('')
+        ? availableTags.map(tg => `<div class="add-tag-option" data-tagid="${tg.id}" style="--tag-color: ${tg.color};"><span class="tag-dot"></span>${escapeHtml(tg.name)}</div>`).join('')
         : `<div class="add-tag-empty">${t('panel_tagNoAvailable')}</div>`;
+
+    const customName = bookmark.customName || '';
+    const customNameHtml = `
+        <span class="bookmark-custom-name-wrapper">
+            <span class="bookmark-custom-name" data-chat="${escapeHtml(bookmark.chatFileName)}" data-msgid="${bookmark.messageId}">${customName ? escapeHtml(customName) : `<span class="custom-name-placeholder">${t('btn_customName')}</span>`}</span>
+            <button class="bookmark-edit-name-btn" title="${t('btn_editName')}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M410.3 231l11.3-11.3-33.9-33.9-62.1-62.1L291.7 89.8l-11.3 11.3-22.6 22.6L58.6 322.9c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4.2 27-11.8 37.4-22.2L387.7 253.7 410.3 231zM160 399.4l-9.1 22.7c-4 3.1-8.5 5.4-13.3 6.9L59.4 452l23-78.1c1.4-4.9 3.8-9.4 6.9-13.3l22.7-9.1 0 32c0 8.8 7.2 16 16 16l32 0zM362.7 18.7L348.3 33.2 325.7 55.8 314.3 67.1l33.9 33.9 62.1 62.1 33.9 33.9 11.3-11.3 22.6-22.6 14.5-14.5c25-25 25-65.5 0-90.5L453.3 18.7c-25-25-65.5-25-90.5 0zm-47.4 168l-144 144c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6l144-144c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6z"/></svg>
+            </button>
+            <input type="text" class="bookmark-name-input" value="${escapeHtml(customName)}" placeholder="${t('placeholder_customName')}" maxlength="50">
+            <button class="bookmark-confirm-name-btn" title="${t('btn_confirm')}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>
+            </button>
+        </span>
+    `;
 
     return `
         <div class="bookmark-item" data-chat="${escapeHtml(bookmark.chatFileName)}" data-msgid="${bookmark.messageId}">
@@ -1159,6 +1225,7 @@ function createBookmarkItemHtml(bookmark) {
             <div class="bookmark-item-content">
                 <div class="bookmark-item-header">
                     <span class="bookmark-item-sender">${escapeHtml(bookmark.sender)}</span>
+                    ${customNameHtml}
                     <span class="bookmark-item-chat-name" title="${escapeHtml(chatDisplayName)}">
                         <i class="fa-regular fa-comment-dots"></i> ${escapeHtml(chatDisplayName)}
                     </span>
@@ -1190,15 +1257,22 @@ function createBookmarkItemHtml(bookmark) {
 /**
  * 建立 Tab 書籤內容 HTML
  */
-function createTabBookmarksHtml(bookmarks, chatFileName) {
-    // 先進行標籤篩選
+function createTabBookmarksHtml(bookmarks, chatFileName, searchQuery = '') {
+
+    let filteredBookmarks = filterBookmarksBySearch(bookmarks, searchQuery);
+    
     const activeTagFilters = getSetting('activeTagFilters') || [];
-    let filteredBookmarks = filterBookmarksByTag(bookmarks, activeTagFilters);
+    filteredBookmarks = filterBookmarksByTag(filteredBookmarks, activeTagFilters);
     
     if (!filteredBookmarks || filteredBookmarks.length === 0) {
-        const filterMessage = activeTagFilters.length > 0 
-            ? `<p>${t('empty_noMatchingBookmarks')}</p><p class="bookmark-hint">${t('empty_noMatchingBookmarksHint')}</p>`
-            : `<p>${t('empty_noBookmarks')}</p><p class="bookmark-hint">${t('empty_noBookmarksHint')}</p>`;
+        let filterMessage;
+        if (searchQuery && searchQuery.trim() !== '') {
+            filterMessage = `<p>${t('empty_noSearchResults')}</p><p class="bookmark-hint">${t('empty_noSearchResultsHint')}</p>`;
+        } else if (activeTagFilters.length > 0) {
+            filterMessage = `<p>${t('empty_noMatchingBookmarks')}</p><p class="bookmark-hint">${t('empty_noMatchingBookmarksHint')}</p>`;
+        } else {
+            filterMessage = `<p>${t('empty_noBookmarks')}</p><p class="bookmark-hint">${t('empty_noBookmarksHint')}</p>`;
+        }
         return `
             <div class="bookmark-empty">
                 <span class="bookmark-empty-icon">${getBookmarkIconSvg(false)}</span>
@@ -1214,7 +1288,7 @@ function createTabBookmarksHtml(bookmarks, chatFileName) {
 /**
  * 載入 Tab 內容
  */
-async function loadTabContent(dlg, chatFileName, currentChatName, popup) {
+async function loadTabContent(dlg, chatFileName, currentChatName, popup, searchQuery = '') {
     const contentContainer = dlg.find('.bookmarks-content');
     contentContainer.html(`<div class="bookmark-empty"><p>${t('empty_loading')}</p></div>`);
 
@@ -1225,7 +1299,7 @@ async function loadTabContent(dlg, chatFileName, currentChatName, popup) {
         bookmarks = await getChatBookmarks(chatFileName);
     }
 
-    contentContainer.html(createTabBookmarksHtml(bookmarks, chatFileName)).attr('data-current-chat', chatFileName);
+    contentContainer.html(createTabBookmarksHtml(bookmarks, chatFileName, searchQuery)).attr('data-current-chat', chatFileName);
     bindBookmarkItemEvents(dlg, currentChatName, popup);
 }
 
@@ -1234,8 +1308,8 @@ async function loadTabContent(dlg, chatFileName, currentChatName, popup) {
  */
 function bindBookmarkItemEvents(dlg, currentChatName, popup) {
     dlg.find('.bookmark-item').off('click').on('click', async function(e) {
-        // 避免點擊標籤區域時觸發預覽
         if ($(e.target).closest('.bookmark-item-tags-area').length) return;
+        if ($(e.target).closest('.bookmark-custom-name-wrapper').length) return;
         await showBookmarkPreview($(this).data('msgid'), $(this).data('chat'));
     });
 
@@ -1262,19 +1336,55 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         if (success) item.fadeOut(200, function() { $(this).remove(); });
     });
     
-    // 添加標籤按鈕 - 顯示/隱藏下拉選單
+    dlg.find('.bookmark-edit-name-btn').off('click').on('click', function(e) {
+        e.stopPropagation();
+        const wrapper = $(this).closest('.bookmark-custom-name-wrapper');
+        wrapper.addClass('editing');
+        wrapper.find('.bookmark-name-input').focus().select();
+    });
+    
+    dlg.find('.bookmark-confirm-name-btn').off('click').on('click', async function(e) {
+        e.stopPropagation();
+        const wrapper = $(this).closest('.bookmark-custom-name-wrapper');
+        const nameDisplay = wrapper.find('.bookmark-custom-name');
+        const nameInput = wrapper.find('.bookmark-name-input');
+        const newName = nameInput.val().trim();
+        const chatFileName = nameDisplay.data('chat');
+        const messageId = nameDisplay.data('msgid');
+        
+        await updateBookmarkName(messageId, newName, chatFileName);
+
+        if (newName) {
+            nameDisplay.html(escapeHtml(newName));
+        } else {
+            nameDisplay.html(`<span class="custom-name-placeholder">${t('btn_customName')}</span>`);
+        }
+        
+        wrapper.removeClass('editing');
+    });
+    
+    dlg.find('.bookmark-name-input').off('keydown click').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            $(this).closest('.bookmark-custom-name-wrapper').find('.bookmark-confirm-name-btn').click();
+        } else if (e.key === 'Escape') {
+            const wrapper = $(this).closest('.bookmark-custom-name-wrapper');
+            wrapper.removeClass('editing');
+        }
+    }).on('click', function(e) {
+        e.stopPropagation();
+    });
+    
     dlg.find('.bookmark-add-tag-btn').off('click').on('click', function(e) {
         e.stopPropagation();
         const wrapper = $(this).closest('.bookmark-add-tag-wrapper');
         const dropdown = wrapper.find('.bookmark-add-tag-dropdown');
         
-        // 關閉其他下拉選單
         dlg.find('.bookmark-add-tag-dropdown').not(dropdown).removeClass('show');
         
         dropdown.toggleClass('show');
     });
     
-    // 點擊下拉選單的標籤選項
     dlg.find('.add-tag-option').off('click').on('click', async function(e) {
         e.stopPropagation();
         const tagId = $(this).data('tagid');
@@ -1284,15 +1394,13 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         
         await addTagToBookmark(messageId, tagId, chatFileName);
         
-        // 關閉下拉選單
         $(this).closest('.bookmark-add-tag-dropdown').removeClass('show');
         
-        // 重新載入書籤列表以更新顯示
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
-        await loadTabContent(dlg, activeChat, currentChatName, popup);
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
     });
     
-    // 移除書籤上的標籤
     dlg.find('.tag-remove').off('click').on('click', async function(e) {
         e.stopPropagation();
         const tagSpan = $(this).closest('.bookmark-tag');
@@ -1302,12 +1410,11 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         
         await removeTagFromBookmark(messageId, tagId, chatFileName);
         
-        // 重新載入書籤列表以更新顯示
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
-        await loadTabContent(dlg, activeChat, currentChatName, popup);
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
     });
     
-    // 點擊其他地方關閉下拉選單
     $(document).off('click.bookmarkTagDropdown').on('click.bookmarkTagDropdown', function() {
         dlg.find('.bookmark-add-tag-dropdown').removeClass('show');
     });
@@ -1329,27 +1436,42 @@ async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentP
             <span class="current-chat-label">${t('addChat_currentChat')}</span>
         </div>
     `;
-    let hasAvailableChats = false;
 
+    // 收集所有聊天及其書籤數量，以便排序
+    const chatDataList = [];
     for (const chatInfo of allChats) {
         if (chatInfo.file_name === currentChatName) continue;
         const bookmarks = await getChatBookmarks(chatInfo.file_name);
-        if (bookmarks.length === 0) continue;
+        chatDataList.push({
+            file_name: chatInfo.file_name,
+            bookmarkCount: bookmarks.length
+        });
+    }
 
-        hasAvailableChats = true;
-        const isAlreadyAdded = selectedChats.includes(chatInfo.file_name);
+    // 排序：有書籤的排在前面，按書籤數量降序；無書籤的排在後面
+    chatDataList.sort((a, b) => {
+        if (a.bookmarkCount > 0 && b.bookmarkCount === 0) return -1;
+        if (a.bookmarkCount === 0 && b.bookmarkCount > 0) return 1;
+        return b.bookmarkCount - a.bookmarkCount;
+    });
+
+    // 生成聊天列表 HTML
+    for (const chatData of chatDataList) {
+        const isAlreadyAdded = selectedChats.includes(chatData.file_name);
+        const hasBookmarks = chatData.bookmarkCount > 0;
         chatListHtml += `
-            <div class="add-chat-tab-item ${isAlreadyAdded ? 'already-added' : ''}" data-chat="${escapeHtml(chatInfo.file_name)}">
+            <div class="add-chat-tab-item ${isAlreadyAdded ? 'already-added' : ''} ${hasBookmarks ? 'has-bookmarks' : 'no-bookmarks'}" data-chat="${escapeHtml(chatData.file_name)}">
                 <i class="fa-regular fa-comment-dots chat-icon"></i>
-                <span class="chat-name">${escapeHtml(chatInfo.file_name.replace('.jsonl', ''))}</span>
-                <span class="chat-bookmark-count">${t('addChat_bookmarkCount', bookmarks.length)}</span>
+                <span class="chat-name">${escapeHtml(chatData.file_name.replace('.jsonl', ''))}</span>
+                ${hasBookmarks ? `<span class="chat-bookmark-count">${t('addChat_bookmarkCount', chatData.bookmarkCount)}</span>` : `<span class="chat-no-bookmark">${t('addChat_noBookmarks')}</span>`}
                 ${isAlreadyAdded ? '<i class="fa-solid fa-check chat-added-icon"></i>' : ''}
             </div>
         `;
     }
 
     loadingPopup.complete(0);
-    if (!hasAvailableChats) chatListHtml = `<div class="no-available-chats"><i class="fa-regular fa-bookmark"></i><p>${t('empty_noOtherChats')}</p></div>`;
+    // 如果沒有任何其他聊天視窗，顯示空狀態
+    if (chatDataList.length === 0) chatListHtml = `<div class="no-available-chats"><i class="fa-regular fa-comment-dots"></i><p>${t('empty_noOtherChats')}</p></div>`;
 
     const popup = new Popup(`
         <div class="add-chat-tab-popup">
@@ -1425,17 +1547,22 @@ async function showBookmarksPanel() {
         `<option value="${key}" ${settings.bookmarkIcon === key ? 'selected' : ''}>${getIconName(key)}</option>`
     ).join('');
 
-    // 建立標籤管理下拉選單選項 HTML
     const tagSelectOptionsHtml = customTags.length > 0
-        ? customTags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${escapeHtml(tag.name)}</option>`).join('')
+        ? customTags.map(tag => {
+            const scopeLabel = getTagScopeLabel(tag);
+            return `<option value="${tag.id}" data-color="${tag.color}" data-scope="${tag.scope || 'global'}">${escapeHtml(tag.name)} (${scopeLabel})</option>`;
+        }).join('')
         : `<option value="" disabled>${t('panel_tagNone')}</option>`;
 
-    // 建立標籤篩選器 HTML (支援多選)
-    const tagFilterHtml = customTags.map(tag => `
-        <span class="tag-filter-item ${activeTagFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
-            ${escapeHtml(tag.name)}
-        </span>
-    `).join('');
+    const visibleTagsForFilter = getVisibleTags();
+    const tagFilterHtml = visibleTagsForFilter.map(tag => {
+        const scopeLabel = getTagScopeLabel(tag);
+        return `
+            <span class="tag-filter-item ${activeTagFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
+                ${escapeHtml(tag.name)}<span class="tag-scope-badge">(${scopeLabel})</span>
+            </span>
+        `;
+    }).join('');
 
     let tabsHtml = `
         <div class="bookmark-tab active current-chat-tab" data-chat="${escapeHtml(currentChatName)}" title="${escapeHtml(currentChatName)}">
@@ -1462,6 +1589,7 @@ async function showBookmarksPanel() {
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M181.3 32.4c17.4 2.9 29.2 19.4 26.3 36.8L197.8 128l95.1 0 11.5-69.3c2.9-17.4 19.4-29.2 36.8-26.3s29.2 19.4 26.3 36.8L357.8 128l58.2 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-68.9 0L323.8 320l60.2 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-70.9 0-11.5 69.3c-2.9 17.4-19.4 29.2-36.8 26.3s-29.2-19.4-26.3-36.8l9.8-58.7-95.1 0-11.5 69.3c-2.9 17.4-19.4 29.2-36.8 26.3s-29.2-19.4-26.3-36.8L90.2 384 32 384c-17.7 0-32-14.3-32-32s14.3-32 32-32l68.9 0 23.3-128L64 192c-17.7 0-32-14.3-32-32s14.3-32 32-32l70.9 0 11.5-69.3c2.9-17.4 19.4-29.2 36.8-26.3zM187.1 192L163.8 320l95.1 0 23.3-128-95.1 0z"/></svg>
                     </button>
                     <button class="menu_button bookmarks-tags-btn" title="${t('btn_tagManagement')}"><i class="fa-solid fa-tags"></i></button>
+                    <button class="menu_button bookmarks-search-btn" title="${t('btn_search')}"><i class="fa-solid fa-magnifying-glass"></i></button>
                     <button class="menu_button bookmarks-settings-btn" title="${t('btn_settings')}"><i class="fa-solid fa-gear"></i></button>
                 </div>
             </div>
@@ -1491,6 +1619,10 @@ async function showBookmarksPanel() {
                             <label class="color-picker-round">
                                 <input type="color" class="tag-new-color" value="#ffe084" title="${t('panel_tagSelectColor')}">
                             </label>
+                            <select class="tag-scope-select" title="${t('panel_tagScope')}">
+                                <option value="global">${t('tag_scopeGlobal')}</option>
+                                <option value="character">${t('tag_scopeCharacter')}</option>
+                            </select>
                             <button class="menu_button tag-add-btn" title="${t('panel_tagAdd')}">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 144L48 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l144 0 0 144c0 17.7 14.3 32 32 32s32-14.3 32-32l0-144 144 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-144 0 0-144z"/></svg>
                             </button>
@@ -1505,12 +1637,17 @@ async function showBookmarksPanel() {
                             <label class="color-picker-round">
                                 <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
                             </label>
+                            <select class="tag-manage-scope-select" title="${t('panel_tagChangeScope')}">
+                                <option value="global">${t('tag_scopeGlobal')}</option>
+                                <option value="character">${t('tag_scopeCharacter')}</option>
+                            </select>
                             <button class="menu_button tag-delete-btn" title="${t('panel_tagDelete')}">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
                             </button>
                         </div>
                     </div>
                 </div>
+                <div class="tags-scope-hint">${t('panel_tagScopeHint')}</div>
                 <div class="tags-panel-section tags-section-filter">
                     <div class="tags-panel-title"><i class="fa-solid fa-filter"></i> ${t('panel_tagFilter')} <span class="filter-hint">${t('panel_tagFilterHint')}</span></div>
                     <div class="tag-filter-container">
@@ -1521,6 +1658,16 @@ async function showBookmarksPanel() {
                         ${tagFilterHtml}
                     </div>
                 </div>
+            </div>
+            
+            <div class="bookmarks-search-panel" style="display: none;">
+                <div class="search-panel-header">
+                    <div class="search-panel-title"><i class="fa-solid fa-magnifying-glass"></i> ${t('panel_searchTitle')}</div>
+                    <button class="bookmark-search-clear-btn" title="${t('btn_clearSearch')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="1em" height="1em"><path fill="currentColor" d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>
+                    </button>
+                </div>
+                <input type="text" class="bookmark-search-input" placeholder="${t('placeholder_search')}" maxlength="100">
             </div>
             
             <div class="bookmarks-settings-panel" style="display: none;">
@@ -1572,7 +1719,6 @@ async function showBookmarksPanel() {
     const popup = new Popup(panelContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
     const dlg = $(popup.dlg);
 
-    // 為 Tab 區域添加滑鼠滾輪橫向滾動支援
     const tabsScrollable = dlg.find('.bookmarks-tabs-scrollable')[0];
     if (tabsScrollable) {
         tabsScrollable.addEventListener('wheel', function(e) {
@@ -1583,12 +1729,10 @@ async function showBookmarksPanel() {
         }, { passive: false });
     }
 
-    // 輔助函式：更新標籤面板
     const updateTagsPanel = async () => {
         const tags = getCustomTags();
         const currentFilters = getSetting('activeTagFilters') || [];
         
-        // 更新標籤管理下拉選單
         const tagSelectOptionsHtml = tags.length > 0
             ? tags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${escapeHtml(tag.name)}</option>`).join('')
             : `<option value="" disabled>${t('panel_tagNone')}</option>`;
@@ -1596,23 +1740,25 @@ async function showBookmarksPanel() {
         const currentSelectedId = selectEl.val();
         selectEl.html(tagSelectOptionsHtml);
         
-        // 恢復選中狀態或選擇第一個
         if (currentSelectedId && tags.some(t => t.id === currentSelectedId)) {
             selectEl.val(currentSelectedId);
         }
-        
-        // 更新管理區域的選色器顏色
+
         const selectedTag = tags.find(t => t.id === selectEl.val());
         if (selectedTag) {
             dlg.find('.tag-manage-color').val(selectedTag.color);
+            dlg.find('.tag-manage-scope-select').val(selectedTag.scope || 'global');
         }
         
-        // 更新標籤篩選器 (支援多選)
-        const tagFilterHtml = tags.map(tag => `
-            <span class="tag-filter-item ${currentFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
-                ${escapeHtml(tag.name)}
-            </span>
-        `).join('');
+        const visibleTagsForUpdate = getVisibleTags();
+        const tagFilterHtml = visibleTagsForUpdate.map(tag => {
+            const scopeLabel = getTagScopeLabel(tag);
+            return `
+                <span class="tag-filter-item ${currentFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
+                    ${escapeHtml(tag.name)}<span class="tag-scope-badge">(${scopeLabel})</span>
+                </span>
+            `;
+        }).join('');
         dlg.find('.tag-filter-container').html(`
             <span class="tag-filter-item tag-filter-all ${currentFilters.length === 0 ? 'active' : ''}" data-tagid="">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M0 72C0 49.9 17.9 32 40 32H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V72zM0 232c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V232zM128 392v48c0 22.1-17.9 40-40 40H40c-22.1 0-40-17.9-40-40V392c0-22.1 17.9-40 40-40H88c22.1 0 40 17.9 40 40zM168 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V72zM296 232v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM168 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H208c-22.1 0-40-17.9-40-40V392zM360 72c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V72zM448 232v48c0 22.1-17.9 40-40 40H360c-22.1 0-40-17.9-40-40V232c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40zM360 392c0-22.1 17.9-40 40-40h48c22.1 0 40 17.9 40 40v48c0 22.1-17.9 40-40 40H400c-22.1 0-40-17.9-40-40V392z"/></svg>
@@ -1622,95 +1768,146 @@ async function showBookmarksPanel() {
         `);
     };
     
-    // 標籤管理下拉選單變更時更新選色器
     dlg.on('change', '.tag-manage-select', function() {
         const tagId = $(this).val();
         const tags = getCustomTags();
         const tag = tags.find(t => t.id === tagId);
         if (tag) {
             dlg.find('.tag-manage-color').val(tag.color);
+            dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
         }
     });
 
-    // 輔助函式：更新展開按鈕的 active 狀態
     const updateHeaderButtonsActiveState = () => {
         const quickActionVisible = dlg.find('.bookmarks-quick-action').is(':visible');
         const tagsPanelVisible = dlg.find('.bookmarks-tags-panel').is(':visible');
+        const searchPanelVisible = dlg.find('.bookmarks-search-panel').is(':visible');
         const settingsPanelVisible = dlg.find('.bookmarks-settings-panel').is(':visible');
         
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', quickActionVisible);
         dlg.find('.bookmarks-tags-btn').toggleClass('active', tagsPanelVisible);
+        dlg.find('.bookmarks-search-btn').toggleClass('active', searchPanelVisible);
         dlg.find('.bookmarks-settings-btn').toggleClass('active', settingsPanelVisible);
     };
 
-    // 快速操作面板開關
     dlg.find('.bookmarks-quick-action-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-quick-action');
         const isOpening = !panel.is(':visible');
         
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
+        dlg.find('.bookmarks-search-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
-        // 立即更新當前按鈕狀態
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-tags-btn').removeClass('active');
+        dlg.find('.bookmarks-search-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
     });
 
-    // 標籤面板開關
     dlg.find('.bookmarks-tags-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-tags-panel');
         const isOpening = !panel.is(':visible');
         
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
+        dlg.find('.bookmarks-search-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
-        // 立即更新當前按鈕狀態
         dlg.find('.bookmarks-tags-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
+        dlg.find('.bookmarks-search-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
     });
 
-    // 設定事件
+    dlg.find('.bookmarks-search-btn').on('click', () => {
+        const panel = dlg.find('.bookmarks-search-panel');
+        const isOpening = !panel.is(':visible');
+        
+        dlg.find('.bookmarks-settings-panel').slideUp(200);
+        dlg.find('.bookmarks-quick-action').slideUp(200);
+        dlg.find('.bookmarks-tags-panel').slideUp(200);
+        panel.slideToggle(200, updateHeaderButtonsActiveState);
+        
+        dlg.find('.bookmarks-search-btn').toggleClass('active', isOpening);
+        dlg.find('.bookmarks-quick-action-btn').removeClass('active');
+        dlg.find('.bookmarks-tags-btn').removeClass('active');
+        dlg.find('.bookmarks-settings-btn').removeClass('active');
+        
+        if (isOpening) {
+            setTimeout(() => dlg.find('.bookmark-search-input').focus(), 250);
+        }
+    });
+
     dlg.find('.bookmarks-settings-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-settings-panel');
         const isOpening = !panel.is(':visible');
         
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
+        dlg.find('.bookmarks-search-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
-        // 立即更新當前按鈕狀態
         dlg.find('.bookmarks-settings-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
+        dlg.find('.bookmarks-search-btn').removeClass('active');
     });
     
-    // 新增標籤
     dlg.find('.tag-add-btn').on('click', async function() {
         const nameInput = dlg.find('.tag-name-input');
         const colorInput = dlg.find('.tag-new-color');
+        const scopeSelect = dlg.find('.tag-scope-select');
         const name = nameInput.val().trim();
+        const scope = scopeSelect.val() || 'global';
         
         if (!name) {
             toastr.warning(t('toast_tagEnterName'), t('toast_tag'));
             return;
         }
         
-        addCustomTag(name, colorInput.val());
+        addCustomTag(name, colorInput.val(), scope);
         nameInput.val('');
         await updateTagsPanel();
         
-        // 重新載入書籤列表以更新標籤選項
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
-        await loadTabContent(dlg, activeChat, currentChatName, popup);
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
         
         toastr.success(t('toast_tagAdded', name), t('toast_tag'));
     });
     
-    // 刪除標籤 (從下拉選單)
+    dlg.on('change', '.tag-manage-scope-select', async function() {
+        const selectEl = dlg.find('.tag-manage-select');
+        const tagId = selectEl.val();
+        const newScope = $(this).val();
+        
+        if (!tagId) return;
+        
+        updateTagScope(tagId, newScope);
+        await updateTagsPanel();
+        
+        const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
+    });
+    
+    let searchTimeout = null;
+    dlg.find('.bookmark-search-input').on('input', function() {
+        const query = $(this).val();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+            await loadTabContent(dlg, activeChat, currentChatName, popup, query);
+        }, 300);
+    });
+    
+    dlg.find('.bookmark-search-clear-btn').on('click', async function() {
+        dlg.find('.bookmark-search-input').val('');
+        const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+        await loadTabContent(dlg, activeChat, currentChatName, popup, '');
+    });
+    
     dlg.find('.tag-delete-btn').on('click', async function(e) {
         e.stopPropagation();
         const selectEl = dlg.find('.tag-manage-select');
@@ -1731,14 +1928,13 @@ async function showBookmarksPanel() {
         await deleteCustomTag(tagId);
         await updateTagsPanel();
         
-        // 重新載入書籤列表
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
-        await loadTabContent(dlg, activeChat, currentChatName, popup);
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
         
         toastr.info(t('toast_tagDeleted', tag.name), t('toast_tag'));
     });
     
-    // 更改標籤顏色 (管理區域)
     dlg.on('change', '.tag-manage-color', async function() {
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
@@ -1758,16 +1954,13 @@ async function showBookmarksPanel() {
         }
     });
     
-    // 標籤篩選 (支援多選)
     dlg.on('click', '.tag-filter-item', async function() {
         const tagId = $(this).data('tagid');
         let currentFilters = getSetting('activeTagFilters') || [];
         
         if (tagId === '' || $(this).hasClass('tag-filter-all')) {
-            // 點擊「全部」則清除所有篩選
             currentFilters = [];
         } else {
-            // 切換標籤選中狀態
             const index = currentFilters.indexOf(tagId);
             if (index > -1) {
                 currentFilters.splice(index, 1);
@@ -1778,7 +1971,6 @@ async function showBookmarksPanel() {
         
         setSetting('activeTagFilters', currentFilters);
         
-        // 更新 UI
         dlg.find('.tag-filter-item').removeClass('active');
         if (currentFilters.length === 0) {
             dlg.find('.tag-filter-all').addClass('active');
@@ -1788,7 +1980,6 @@ async function showBookmarksPanel() {
             });
         }
         
-        // 重新載入書籤列表
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
     });
@@ -1807,7 +1998,6 @@ async function showBookmarksPanel() {
         setSetting('previewLineClamp', value);
         applyCssVariables();
         
-        // 即時更新當前面板中的書籤項目行數限制
         dlg.find('.bookmark-item-text').each(function() {
             $(this).css({
                 '-webkit-line-clamp': value,
@@ -1818,20 +2008,20 @@ async function showBookmarksPanel() {
 
     dlg.find('#bookmark-icon-type').on('change', function() {
         setSetting('bookmarkIcon', $(this).val());
-        updateAllBookmarkIcons(true);  // 傳入 true 以更新 SVG 圖示內容
+        updateAllBookmarkIcons(true); 
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
     });
 
-    // 恢復預設設定
+
     dlg.find('.bookmark-reset-defaults-btn').on('click', async function() {
         const confirmed = await Popup.show.confirm(t('panel_confirmResetTitle'), t('panel_confirmResetMessage'));
         if (!confirmed) return;
 
-        // 保留書籤資料相關設定
+ 
         const selectedChatsByCharacter = getSetting('selectedChatsByCharacter') || {};
         
-        // 重置設定
+ 
         extension_settings[extensionName] = { 
             ...defaultSettings,
             selectedChatsByCharacter 
@@ -1839,22 +2029,18 @@ async function showBookmarksPanel() {
         saveSettingsDebounced();
         applyCssVariables();
         
-        // 更新面板上的設定值顯示
         dlg.find('#bookmark-accent-color').val(defaultSettings.accentColor);
         dlg.find('#bookmark-preview-range').val(defaultSettings.previewRange);
         dlg.find('#bookmark-preview-line-clamp').val(defaultSettings.previewLineClamp);
         dlg.find('#bookmark-icon-type').val(defaultSettings.bookmarkIcon);
         
-        // 更新排序按鈕狀態
         dlg.find('.bookmark-sort-btn').removeClass('active');
         dlg.find(`.bookmark-sort-btn[data-sort="${defaultSettings.sortOrder}"]`).addClass('active');
         
-        // 更新圖示
-        updateAllBookmarkIcons(true);  // 傳入 true 以更新 SVG 圖示內容
+        updateAllBookmarkIcons(true);
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
         
-        // 更新書籤項目的行數限制
         dlg.find('.bookmark-item-text').each(function() {
             $(this).css({
                 '-webkit-line-clamp': defaultSettings.previewLineClamp,
@@ -1862,28 +2048,25 @@ async function showBookmarksPanel() {
             });
         });
         
-        // 重新載入當前 Tab 內容以套用排序
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
         
         toastr.success(t('toast_settingsReset'), t('toast_bookmark'));
     });
 
-    // 排序按鈕事件
+
     dlg.find('.bookmark-sort-btn').on('click', async function() {
         const sortOrder = $(this).data('sort');
         setSetting('sortOrder', sortOrder);
         
-        // 更新按鈕狀態
         dlg.find('.bookmark-sort-btn').removeClass('active');
         $(this).addClass('active');
         
-        // 重新載入當前 Tab 內容以套用排序
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
     });
 
-    // 快速預覽
+
     dlg.find('.bookmark-quick-preview-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
         if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
@@ -1891,7 +2074,7 @@ async function showBookmarksPanel() {
         await showQuickPreview(msgId, chatFileName);
     });
 
-    // 快速跳轉
+
     dlg.find('.bookmark-quick-jump-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
         if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
@@ -1899,7 +2082,7 @@ async function showBookmarksPanel() {
         await loadChatAndJump(dlg.find('.bookmark-tab.active').data('chat'), msgId);
     });
 
-    // 快速書籤
+ 
     dlg.find('.bookmark-quick-bookmark-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
         if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
@@ -1915,7 +2098,7 @@ async function showBookmarksPanel() {
         await loadTabContent(dlg, chatFileName, currentChatName, popup);
     });
 
-    // Tab 切換
+ 
     dlg.find('.bookmarks-tabs').on('click', '.bookmark-tab', async function(e) {
         if ($(e.target).closest('.tab-close').length) return;
         dlg.find('.bookmark-tab').removeClass('active');
@@ -1923,7 +2106,7 @@ async function showBookmarksPanel() {
         await loadTabContent(dlg, $(this).data('chat'), currentChatName, popup);
     });
 
-    // Tab 關閉
+
     dlg.find('.bookmarks-tabs').on('click', '.tab-close', async function(e) {
         e.stopPropagation();
         const tab = $(this).closest('.bookmark-tab');
@@ -1944,7 +2127,7 @@ async function showBookmarksPanel() {
         tab.remove();
     });
 
-    // 新增 Tab
+
     dlg.find('.bookmark-tab-add').on('click', () => showAddChatTabPopup(dlg, allChats, currentChatName, popup));
 
     bindBookmarkItemEvents(dlg, currentChatName, popup);
@@ -2019,7 +2202,6 @@ function setupChatObserver() {
  * 註冊書籤擴充的斜線指令
  */
 function registerSlashCommands() {
-    // /bookmark-panel - 打開書籤面板
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark-panel',
         aliases: ['bookmarks', 'bm-panel'],
@@ -2039,7 +2221,6 @@ function registerSlashCommands() {
         `,
     }));
 
-    // /bookmark - 為當前（最後一則）訊息添加書籤
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark',
         aliases: ['bm'],
@@ -2064,7 +2245,6 @@ function registerSlashCommands() {
         `,
     }));
 
-    // /bookmark-add - 為指定訊息添加書籤
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark-add',
         aliases: ['bm-add'],
@@ -2097,7 +2277,6 @@ function registerSlashCommands() {
         `,
     }));
 
-    // /bookmark-remove - 移除指定訊息的書籤
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark-remove',
         aliases: ['bm-remove', 'bm-del'],
@@ -2130,7 +2309,6 @@ function registerSlashCommands() {
         `,
     }));
 
-    // /bookmark-preview - 預覽指定訊息
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark-preview',
         aliases: ['bm-preview'],
@@ -2164,7 +2342,6 @@ function registerSlashCommands() {
         `,
     }));
 
-    // /bookmark-goto - 跳轉至指定訊息
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'bookmark-goto',
         aliases: ['bm-goto', 'bm-jump'],
@@ -2208,7 +2385,6 @@ async function loadSettings() {
     if (Object.keys(extension_settings[extensionName]).length === 0) {
         Object.assign(extension_settings[extensionName], defaultSettings);
     }
-    // 確保所有設定項目存在
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (extension_settings[extensionName][key] === undefined) {
             extension_settings[extensionName][key] = value;
@@ -2218,7 +2394,6 @@ async function loadSettings() {
 }
 
 jQuery(async () => {
-    // 載入語言設定
     await loadLocale(extensionFolderPath);
     
     await loadSettings();

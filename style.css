@@ -24,6 +24,7 @@
 .add-chat-tab-list::-webkit-scrollbar-track {
     background: var(--SmartThemeBlurTintColor);
     border-radius: 5px;
+    border: none;
 }
 
 .bookmarks-content::-webkit-scrollbar-thumb,
@@ -33,7 +34,7 @@
 .add-chat-tab-list::-webkit-scrollbar-thumb {
     background: var(--bookmark-accent-color);
     border-radius: 5px;
-    border: 2px solid var(--SmartThemeBlurTintColor);
+    border: none;
 }
 
 .bookmarks-content::-webkit-scrollbar-thumb:hover,
@@ -56,11 +57,25 @@
     position: relative;
     width: 1em;
     height: 1em;
+    min-width: 1em;
+    min-height: 1em;
     user-select: none;
     -webkit-user-select: none;
     caret-color: transparent;
     top: 1.5px;
     margin: 0 0.1em 0 0;
+    overflow: hidden;
+    line-height: 0;
+    font-size: inherit;
+    box-sizing: border-box;
+    border: none !important;
+}
+
+/* 確保書籤按鈕沒有偽元素產生的視覺效果 */
+.chat-bookmark-star::before,
+.chat-bookmark-star::after {
+    display: none !important;
+    content: none !important;
 }
 
 .chat-bookmark-star .bookmark-icon-svg {
@@ -70,9 +85,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.1em;
-    height: 1.1em;
+    width: 1em;
+    height: 1em;
     transition: opacity 0.15s ease;
+    pointer-events: none;
+    line-height: 0;
 }
 
 /* 預設顯示空心圖示，隱藏實心圖示 */
@@ -128,6 +145,29 @@
 
 .chat-bookmark-star * {
     pointer-events: none;
+}
+
+/* 防止 extraMesButtons 容器在書籤切換時產生視覺閃爍 */
+.extraMesButtons .chat-bookmark-star {
+    flex-shrink: 0;
+    contain: layout style;
+    box-sizing: border-box;
+}
+
+/* 防止容器滾動條閃爍和邊框效果 */
+.extraMesButtons::-webkit-scrollbar,
+.mes_buttons::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.extraMesButtons,
+.mes_buttons {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-right: none !important;
+    outline: none !important;
 }
 
 /* ===== 擴展功能選單按鈕 ===== */
@@ -197,7 +237,8 @@
 
 .bookmarks-settings-btn,
 .bookmarks-tags-btn,
-.bookmarks-quick-action-btn {
+.bookmarks-quick-action-btn,
+.bookmarks-search-btn {
     padding: 7px 10px;
     min-width: auto;
     font-size: 1em;
@@ -209,7 +250,8 @@
 
 .bookmarks-settings-btn.active,
 .bookmarks-tags-btn.active,
-.bookmarks-quick-action-btn.active {
+.bookmarks-quick-action-btn.active,
+.bookmarks-search-btn.active {
     background-color: var(--bookmark-accent-color);
     color: var(--SmartThemeBlurTintColor);
     border-color: var(--bookmark-accent-color);
@@ -217,13 +259,15 @@
 
 .bookmarks-settings-btn.active i,
 .bookmarks-tags-btn.active i,
-.bookmarks-quick-action-btn.active svg {
+.bookmarks-quick-action-btn.active svg,
+.bookmarks-search-btn.active i {
     color: var(--SmartThemeBlurTintColor);
 }
 
 .bookmarks-settings-btn i,
 .bookmarks-tags-btn i,
-.bookmarks-quick-action-btn svg {
+.bookmarks-quick-action-btn svg,
+.bookmarks-search-btn i {
     font-size: 1.1em;
     width: 1.1em;
     height: 1.1em;
@@ -279,11 +323,17 @@
     min-width: 120px;
     padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--SmartThemeBlurTintColor);
     color: var(--SmartThemeBodyColor);
     height: 32px;
     box-sizing: border-box;
+}
+
+.bookmarks-quick-action input[type="number"]::placeholder {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+    font-size: 0.85em;
 }
 
 .bookmarks-quick-action .quick-action-buttons {
@@ -372,7 +422,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    line-height: 30px;
+    line-height: 32px;
     font-size: 0.85em;
 }
 
@@ -382,38 +432,38 @@
 
 .bookmarks-settings-panel input[type="color"] {
     width: 40px;
-    height: 30px;
+    height: 32px;
     padding: 0;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
 .bookmarks-settings-panel input[type="number"] {
     width: 60px;
-    padding: 5px;
+    padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--SmartThemeBlurTintColor);
     color: var(--SmartThemeBodyColor);
-    height: 30px;
+    height: 32px;
     box-sizing: border-box;
 }
 
 .bookmarks-settings-panel select {
-    padding: 5px 10px;
+    padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--SmartThemeBlurTintColor);
     color: var(--SmartThemeBodyColor);
-    height: 30px;
+    height: 32px;
     box-sizing: border-box;
-    margin-top: 4px;
+    margin-top: 0;
 }
 
 .bookmarks-settings-panel .bookmark-reset-defaults-btn {
-    padding: 5px 10px;
-    height: 30px;
+    padding: 6px 10px;
+    height: 32px;
     font-size: 0.85em;
     display: flex;
     align-items: center;
@@ -435,8 +485,8 @@
 }
 
 .bookmark-sort-btn {
-    padding: 5px 8px;
-    height: 30px;
+    padding: 6px 8px;
+    height: 32px;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -721,6 +771,22 @@
     flex-shrink: 0;
 }
 
+.add-chat-tab-item .chat-no-bookmark {
+    font-size: 0.85em;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.5;
+    flex-shrink: 0;
+    font-style: italic;
+}
+
+.add-chat-tab-item.no-bookmarks {
+    opacity: 0.7;
+}
+
+.add-chat-tab-item.no-bookmarks:hover {
+    opacity: 1;
+}
+
 .add-chat-tab-item .chat-added-icon {
     color: var(--bookmark-accent-color);
     flex-shrink: 0;
@@ -808,11 +874,28 @@
     height: 48px;
     margin-bottom: 15px;
     opacity: 0.5;
+    /* 禁用所有過渡效果，防止 popup 開啟/關閉時的浮動 */
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    will-change: auto !important;
+    contain: strict;
 }
 
 .bookmark-empty .bookmark-empty-icon svg {
     width: 100%;
     height: 100%;
+    /* 禁用 SVG 過渡效果 */
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+    will-change: auto !important;
+}
+
+.bookmark-empty .bookmark-empty-icon svg path {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
 }
 
 .bookmark-empty p {
@@ -1365,6 +1448,77 @@
     .quick-preview-text {
         max-height: 50vh;
     }
+    
+    /* 手機版書籤項目排版調整 */
+    .bookmark-item-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    /* 讓聊天視窗名稱接在角色名稱後面作為後綴小字 */
+    .bookmark-item-sender {
+        flex-shrink: 0;
+    }
+    
+    .bookmark-item-chat-name {
+        order: 0;
+        margin-top: 0;
+        flex-shrink: 1;
+        min-width: 0;
+    }
+    
+    /* 自訂名稱在第二行 */
+    .bookmark-custom-name-wrapper {
+        margin-left: 0;
+        margin-top: 4px;
+        width: 100%;
+        order: 2;
+        flex-basis: 100%;
+    }
+    
+    .bookmark-custom-name {
+        max-width: 180px;
+    }
+    
+    .bookmark-name-input {
+        width: 140px;
+        max-width: 180px;
+    }
+    
+    /* 手機版標籤寬度限制：兩個中文字寬度後換行 */
+    .bookmark-item-tags-area {
+        max-width: 100%;
+        align-items: flex-start;
+    }
+    
+    .bookmark-tags-container {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .bookmark-tag {
+        white-space: normal;
+        max-width: 100%;
+    }
+    
+    .bookmark-tag .tag-name {
+        /* 約兩個中文字的寬度 (2em) 後換行 */
+        max-width: 2.5em;
+        word-break: break-all;
+        white-space: normal;
+        line-height: 1.2;
+    }
+    
+    /* 書籤項目右側區域調整 */
+    .bookmark-item-right {
+        flex-shrink: 1;
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 
 /* ===== 動畫 ===== */
@@ -1423,7 +1577,6 @@
 .tags-panel-row {
     display: flex;
     gap: 20px;
-    margin-bottom: 12px;
 }
 
 .tags-section-add,
@@ -1453,6 +1606,11 @@
     box-sizing: border-box;
 }
 
+.tag-name-input::placeholder {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+}
+
 .tag-manage-select {
     flex: 1;
     min-width: 80px;
@@ -1465,6 +1623,7 @@
     height: 32px;
     box-sizing: border-box;
     cursor: pointer;
+    margin-top: 2px;
 }
 
 /* 圓形選色器通用樣式 */
@@ -1543,10 +1702,20 @@
     background: rgba(255, 68, 68, 0.1);
 }
 
+/* 標籤範圍提示 */
+.tags-scope-hint {
+    font-size: 0.8em;
+    opacity: 0.6;
+    color: var(--SmartThemeQuoteColor);
+    padding: 6px 0 10px 0;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    margin-bottom: 10px;
+}
+
 /* 標籤篩選區 */
 .tags-section-filter {
     padding-top: 10px;
-    border-top: 1px solid var(--SmartThemeBorderColor);
+    border-top: none;
 }
 
 .tags-section-filter .tags-panel-title {
@@ -1818,4 +1987,236 @@
     text-align: center;
     font-size: 0.8em;
     opacity: 0.6;
+}
+
+/* ===== 自訂名稱功能 ===== */
+.bookmark-custom-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.bookmark-custom-name {
+    font-size: 0.9em;
+    color: var(--SmartThemeEmColor);
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.custom-name-placeholder {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.bookmark-edit-name-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--SmartThemeQuoteColor);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--SmartThemeQuoteColor);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.bookmark-edit-name-btn:hover {
+    border-color: var(--bookmark-accent-color);
+    color: var(--bookmark-accent-color);
+}
+
+.bookmark-edit-name-btn svg {
+    width: 10px;
+    height: 10px;
+}
+
+.bookmark-name-input {
+    display: none;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+    width: 120px;
+    max-width: 150px;
+}
+
+.bookmark-name-input:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
+}
+
+.bookmark-confirm-name-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--SmartThemeQuoteColor);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--SmartThemeQuoteColor);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.bookmark-confirm-name-btn:hover {
+    border-color: var(--bookmark-accent-color);
+    color: var(--bookmark-accent-color);
+    background: color-mix(in srgb, var(--bookmark-accent-color) 15%, transparent);
+}
+
+.bookmark-confirm-name-btn svg {
+    width: 10px;
+    height: 10px;
+}
+
+.bookmark-custom-name-wrapper.editing .bookmark-custom-name,
+.bookmark-custom-name-wrapper.editing .bookmark-edit-name-btn {
+    display: none;
+}
+
+.bookmark-custom-name-wrapper.editing .bookmark-name-input,
+.bookmark-custom-name-wrapper.editing .bookmark-confirm-name-btn {
+    display: flex;
+}
+
+/* ===== 搜索面板 ===== */
+.bookmarks-search-panel {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.search-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.search-panel-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.search-panel-title i {
+    color: var(--bookmark-accent-color);
+}
+
+.bookmark-search-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.bookmark-search-input:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
+}
+
+.bookmark-search-input::placeholder {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+}
+
+.bookmark-search-clear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--SmartThemeQuoteColor);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--SmartThemeQuoteColor);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.bookmark-search-clear-btn:hover {
+    border-color: var(--bookmark-accent-color);
+    color: var(--bookmark-accent-color);
+}
+
+.bookmark-search-clear-btn svg {
+    width: 10px;
+    height: 10px;
+}
+
+/* ===== 標籤範圍選擇器 ===== */
+.tag-scope-select,
+.tag-manage-scope-select {
+    padding: 6px 8px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.8em;
+    height: 32px;
+    box-sizing: border-box;
+    cursor: pointer;
+    min-width: 70px;
+    margin-top: 2px;
+}
+
+.tag-scope-select:focus,
+.tag-manage-scope-select:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
+}
+
+/* 標籤範圍徽章 */
+.tag-scope-badge {
+    font-size: 0.75em;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+/* ===== 響應式調整 ===== */
+@media (max-width: 768px) {
+    .bookmark-custom-name {
+        max-width: 80px;
+    }
+    
+    .bookmark-name-input {
+        width: 80px;
+        max-width: 100px;
+    }
+    
+    .tag-scope-select,
+    .tag-manage-scope-select {
+        min-width: 60px;
+        font-size: 0.75em;
+    }
 }

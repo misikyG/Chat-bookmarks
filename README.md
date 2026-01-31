@@ -22,7 +22,10 @@
 #### 標籤管理
 - 建立自訂標籤並設定顏色
 - 為書籤添加標籤以便分類
-- 透過標籤篩選書籤（支援多選，OR 邏輯）
+- 透過標籤篩選書籤（支援多選）
+- **標籤範圍說明**：
+  - 「**全域**」：通用標籤，在所有角色的書籤中都可以使用
+  - 「**角色**」：僅此角色標籤，只在當前角色的書籤中顯示
 
 #### 訊息預覽
 - 點擊任何書籤項目可預覽該訊息
@@ -78,7 +81,10 @@ A SillyTavern extension that allows you to mark bookmarks on chat messages for q
 #### Tag Management
 - Create custom tags with custom colors
 - Assign tags to bookmarks for better organization
-- Filter bookmarks by tags (supports multiple tag selection with OR logic)
+- Filter bookmarks by tags (supports multiple tag selection)
+- **Tag Scope Explained**:
+  - "**Global**": Universal tags, available across all characters
+  - "**Char**": Character-specific tags, only visible for the current character
 
 #### Message Preview
 - Click any bookmark item to preview that message
