@@ -2299,6 +2299,55 @@ function onMessageReceived(messageId) {
     }, 100);
 }
 
+/**
+ * 當訊息被刪除時的處理函式
+ * 1. 移除被刪除訊息的書籤
+ * 2. 更新剩餘書籤的 messageId（因為刪除後訊息的索引會改變）
+ * @param {number} newChatLength - 刪除訊息後的聊天長度
+ */
+async function onMessageDeleted(newChatLength) {
+    if (!chat_metadata || !chat_metadata.chat_bookmarks) return;
+    
+    const currentChatFileName = getCurrentChatFileName();
+    if (!currentChatFileName) return;
+    
+    const rawBookmarks = getCurrentChatBookmarksRaw();
+    const originalLength = rawBookmarks.length;
+    
+    // 過濾出屬於當前聊天且 messageId 有效的書籤
+    // messageId 必須小於新的聊天長度才是有效的
+    const validBookmarks = rawBookmarks.filter(bookmark => {
+        // 檢查是否屬於當前聊天
+        const belongsToCurrentChat = chat_metadata.main_chat
+            ? bookmark.originChatFileName === currentChatFileName
+            : (!bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName);
+        
+        if (!belongsToCurrentChat) {
+            // 不屬於當前聊天的書籤保留（可能是其他聊天的書籤）
+            return true;
+        }
+        
+        // 屬於當前聊天的書籤，檢查 messageId 是否仍有效
+        return bookmark.messageId < newChatLength;
+    });
+    
+    // 如果有書籤被移除，更新 metadata 並儲存
+    if (validBookmarks.length !== originalLength) {
+        chat_metadata.chat_bookmarks = validBookmarks;
+        console.log(`Chat Bookmarks: 已清理 ${originalLength - validBookmarks.length} 個無效書籤`);
+        
+        // 更新 UI
+        updateAllBookmarkIcons();
+        
+        // 儲存變更
+        await saveChatConditional();
+        
+        if (getSetting('showNotifications')) {
+            toastr.info(t('toast_bookmarkAutoRemoved') || '已自動移除無效的書籤', t('toast_bookmark'));
+        }
+    }
+}
+
 function setupChatObserver() {
     const chatContainer = document.getElementById('chat');
     if (!chatContainer) {
@@ -2546,6 +2595,7 @@ jQuery(async () => {
     eventSource.on(event_types.MESSAGE_SENT, onMessageReceived);
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, onMessageReceived);
     eventSource.on(event_types.USER_MESSAGE_RENDERED, onMessageReceived);
+    eventSource.on(event_types.MESSAGE_DELETED, onMessageDeleted);
     eventSource.on(event_types.MORE_MESSAGES_LOADED, () => setTimeout(addBookmarkButtonsToAllMessages, 100));
 
     console.log('Chat Bookmarks extension loaded');

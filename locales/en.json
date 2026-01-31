@@ -31,6 +31,7 @@
     "toast_provideValidNumber": "Please provide a valid message number",
     "toast_checkingBookmarks": "Checking bookmarks...",
     "toast_checkingBookmarksHint": "More chat windows means slower search, please wait...",
+    "toast_bookmarkAutoRemoved": "Invalid bookmarks have been automatically removed",
     
     "toast_tag": "Tag",
     "toast_tagEnterName": "Please enter a tag name",

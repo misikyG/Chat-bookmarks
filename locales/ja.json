@@ -31,6 +31,7 @@
     "toast_provideValidNumber": "有効なメッセージ番号を指定してください",
     "toast_checkingBookmarks": "ブックマークを確認中...",
     "toast_checkingBookmarksHint": "チャットウィンドウが多いほど検索が遅くなります。お待ちください...",
+    "toast_bookmarkAutoRemoved": "無効なブックマークが自動的に削除されました",
     
     "toast_tag": "タグ",
     "toast_tagEnterName": "タグ名を入力してください",
