@@ -233,16 +233,69 @@ async function saveChatData(chatFileName, chatData) {
 
 /**
  * 取得當前聊天的書籤
+ * 會自動過濾掉從其他聊天繼承來的書籤（例如分支創建時複製的書籤）
  */
 function getCurrentChatBookmarks() {
+    if (!chat_metadata) return [];
+    if (!chat_metadata.chat_bookmarks) {
+        chat_metadata.chat_bookmarks = [];
+    }
+    
+    const currentChatFileName = getCurrentChatFileName();
+    
+    // 過濾出屬於當前聊天的書籤
+    // 書籤有效條件：
+    // 1. 書籤沒有 originChatFileName（舊版書籤，向下相容）
+    // 2. 書籤的 originChatFileName 與當前聊天檔案名稱相同
+    return chat_metadata.chat_bookmarks.filter(bookmark => {
+        return !bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName;
+    });
+}
+
+/**
+ * 取得當前聊天的原始書籤陣列（不過濾）
+ * 用於內部操作，如清理繼承的書籤
+ */
+function getCurrentChatBookmarksRaw() {
     if (!chat_metadata) return [];
     return chat_metadata.chat_bookmarks || (chat_metadata.chat_bookmarks = []);
 }
 
 /**
- * 建立書籤資料物件 (共用邏輯)
+ * 清理從其他聊天繼承來的書籤
+ * 當偵測到聊天是從分支創建的，會自動清理不屬於此聊天的書籤
  */
-function createBookmarkData(message, messageId) {
+async function cleanupInheritedBookmarks() {
+    if (!chat_metadata || !chat_metadata.chat_bookmarks) return;
+    
+    const currentChatFileName = getCurrentChatFileName();
+    const rawBookmarks = chat_metadata.chat_bookmarks;
+    
+    // 找出繼承的書籤（originChatFileName 與當前聊天不同）
+    const inheritedBookmarks = rawBookmarks.filter(b => 
+        b.originChatFileName && b.originChatFileName !== currentChatFileName
+    );
+    
+    if (inheritedBookmarks.length > 0) {
+        console.log(`Chat Bookmarks: 偵測到 ${inheritedBookmarks.length} 個繼承的書籤，正在清理...`);
+        
+        // 只保留屬於當前聊天的書籤
+        chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
+            !b.originChatFileName || b.originChatFileName === currentChatFileName
+        );
+        
+        await saveChatConditional();
+        console.log(`Chat Bookmarks: 繼承的書籤已清理`);
+    }
+}
+
+/**
+ * 建立書籤資料物件 (共用邏輯)
+ * @param {object} message - 訊息物件
+ * @param {number} messageId - 訊息 ID
+ * @param {string} originChatFileName - 創建書籤時的聊天檔案名稱（用於識別書籤來源）
+ */
+function createBookmarkData(message, messageId, originChatFileName = null) {
     return {
         messageId,
         text: (message.mes || '').substring(0, 1500),
@@ -250,6 +303,7 @@ function createBookmarkData(message, messageId) {
         sender: message.name || (message.is_user ? 'You' : 'Character'),
         isUser: message.is_user || false,
         customName: '', // 書籤自訂名稱
+        originChatFileName: originChatFileName || getCurrentChatFileName(), // 書籤創建時的聊天檔案名稱
     };
 }
 
@@ -260,7 +314,7 @@ async function updateBookmarkName(messageId, newName, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
     
     if (!chatFileName || chatFileName === currentChatName) {
-
+        // 使用過濾後的書籤來找到正確的書籤（物件引用仍然有效）
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
         if (bookmark) {
@@ -318,8 +372,9 @@ async function addBookmark(messageId) {
         return false;
     }
 
-    const bookmarks = getCurrentChatBookmarks();
-    bookmarks.push(createBookmarkData(chat[messageId], messageId));
+    // 直接操作原始書籤陣列，而非過濾後的陣列
+    const rawBookmarks = getCurrentChatBookmarksRaw();
+    rawBookmarks.push(createBookmarkData(chat[messageId], messageId));
 
     updateBookmarkIcon(messageId, true);
     await saveChatConditional();
@@ -334,15 +389,22 @@ async function addBookmark(messageId) {
  * 移除書籤
  */
 async function removeBookmark(messageId) {
-    const bookmarks = getCurrentChatBookmarks();
-    const index = bookmarks.findIndex(b => b.messageId === messageId);
+    // 使用原始書籤陣列來移除
+    const rawBookmarks = getCurrentChatBookmarksRaw();
+    const currentChatFileName = getCurrentChatFileName();
+    
+    // 找到屬於當前聊天的書籤
+    const index = rawBookmarks.findIndex(b => 
+        b.messageId === messageId && 
+        (!b.originChatFileName || b.originChatFileName === currentChatFileName)
+    );
 
     if (index === -1) {
         toastr.warning(t('toast_bookmarkNotFound'), t('toast_bookmark'));
         return;
     }
 
-    bookmarks.splice(index, 1);
+    rawBookmarks.splice(index, 1);
     updateBookmarkIcon(messageId, false);
     await saveChatConditional();
 
@@ -369,7 +431,8 @@ async function addBookmarkToExternalChat(chatFileName, messageId) {
         return false; 
     }
 
-    bookmarks.push(createBookmarkData(messages[messageId], messageId));
+    // 傳入 chatFileName 作為書籤的來源聊天檔案名稱
+    bookmarks.push(createBookmarkData(messages[messageId], messageId, chatFileName));
     metadata.chat_bookmarks = bookmarks;
     chatData[0].chat_metadata = metadata;
 
@@ -538,8 +601,9 @@ async function deleteCustomTag(tagId) {
         setSetting('activeTagFilters', activeFilters);
     }
     
-    const bookmarks = getCurrentChatBookmarks();
-    bookmarks.forEach(b => {
+    // 使用原始書籤陣列來移除所有書籤上的此標籤
+    const rawBookmarks = getCurrentChatBookmarksRaw();
+    rawBookmarks.forEach(b => {
         if (b.tags && Array.isArray(b.tags)) {
             const tagIndex = b.tags.indexOf(tagId);
             if (tagIndex > -1) {
@@ -2155,7 +2219,10 @@ function addExtensionMenuButton() {
 
 // ========== 事件處理 ==========
 
-function onChatChanged() {
+async function onChatChanged() {
+    // 清理從其他聊天繼承來的書籤（處理分支創建的情況）
+    await cleanupInheritedBookmarks();
+    
     setTimeout(addBookmarkButtonsToAllMessages, 500);
 }
 
