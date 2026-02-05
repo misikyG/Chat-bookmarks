@@ -31,12 +31,14 @@
     "toast_provideValidNumber": "請提供有效的訊息編號",
     "toast_checkingBookmarks": "正在檢查書籤...",
     "toast_checkingBookmarksHint": "聊天視窗越多查找越慢，請稍後...",
+    "toast_bookmarkAutoRemoved": "已自動移除無效的書籤",
     
     "toast_tag": "標籤",
     "toast_tagEnterName": "請輸入標籤名稱",
     "toast_tagAdded": "已新增標籤「{0}」",
     "toast_tagSelectFirst": "請先選擇要刪除的標籤",
     "toast_tagDeleted": "已刪除標籤「{0}」",
+    "toast_tagUpdated": "已更新標籤「{0}」",
     
     "toast_settingsReset": "已恢復預設設定",
     
@@ -83,6 +85,8 @@
     "panel_tagEnterNew": "輸入新標籤",
     "panel_tagSelectColor": "選擇顏色",
     "panel_tagChangeColor": "更改顏色",
+    "panel_tagEdit": "編輯標籤",
+    "panel_tagEditName": "輸入新名稱",
     "panel_tagDelete": "刪除標籤",
     "panel_tagFilter": "標籤篩選",
     "panel_tagFilterHint": "（可多選）",

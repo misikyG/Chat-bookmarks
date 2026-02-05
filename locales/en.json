@@ -31,12 +31,14 @@
     "toast_provideValidNumber": "Please provide a valid message number",
     "toast_checkingBookmarks": "Checking bookmarks...",
     "toast_checkingBookmarksHint": "More chat windows means slower search, please wait...",
+    "toast_bookmarkAutoRemoved": "Invalid bookmarks have been automatically removed",
     
     "toast_tag": "Tag",
     "toast_tagEnterName": "Please enter a tag name",
     "toast_tagAdded": "Added tag \"{0}\"",
     "toast_tagSelectFirst": "Please select a tag to delete first",
     "toast_tagDeleted": "Deleted tag \"{0}\"",
+    "toast_tagUpdated": "Updated tag \"{0}\"",
     
     "toast_settingsReset": "Settings have been reset to defaults",
     
@@ -83,6 +85,8 @@
     "panel_tagEnterNew": "Enter new tag",
     "panel_tagSelectColor": "Select color",
     "panel_tagChangeColor": "Change color",
+    "panel_tagEdit": "Edit tag",
+    "panel_tagEditName": "Enter new name",
     "panel_tagDelete": "Delete tag",
     "panel_tagFilter": "Tag Filter",
     "panel_tagFilterHint": "(multiple selection)",

@@ -1622,6 +1622,7 @@
 
 .tag-manage-select {
     flex: 1;
+    width: 100%;
     min-width: 80px;
     padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
@@ -1632,7 +1633,6 @@
     height: 32px;
     box-sizing: border-box;
     cursor: pointer;
-    margin-top: 2px;
 }
 
 /* 圓形選色器通用樣式 */
@@ -1709,6 +1709,97 @@
     color: #ff4444;
     border-color: #ff4444;
     background: rgba(255, 68, 68, 0.1);
+}
+
+/* 標籤編輯按鈕 */
+.tags-section-manage .tag-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.7;
+}
+
+.tags-section-manage .tag-edit-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tags-section-manage .tag-edit-btn:hover {
+    opacity: 1;
+    color: var(--bookmark-accent-color);
+    border-color: var(--bookmark-accent-color);
+    background: color-mix(in srgb, var(--bookmark-accent-color) 20%, transparent);
+}
+
+.tags-section-manage .tag-edit-btn.editing {
+    opacity: 1;
+    color: #4CAF50;
+    border-color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.tags-section-manage .tag-edit-btn.editing:hover {
+    background: rgba(76, 175, 80, 0.2);
+}
+
+/* 標籤管理內容區域（包含 select 和編輯區域） */
+.tag-manage-content-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* 標籤編輯區域 */
+.tag-edit-area {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    width: 100%;
+}
+
+.tag-edit-name-input {
+    flex: 1;
+    min-width: 60px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.tag-edit-name-input::placeholder {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+}
+
+.tag-edit-name-input:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--bookmark-accent-color) 30%, transparent);
+}
+
+/* 響應式：窄螢幕時調整編輯區域 */
+@media (max-width: 600px) {
+    .tag-edit-area {
+        gap: 5px;
+    }
+    
+    .tag-edit-name-input {
+        min-width: 50px;
+    }
 }
 
 /* 標籤範圍提示 */
