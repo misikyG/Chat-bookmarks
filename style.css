@@ -1622,6 +1622,7 @@
 
 .tag-manage-select {
     flex: 1;
+    width: 100%;
     min-width: 80px;
     padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
@@ -1632,7 +1633,6 @@
     height: 32px;
     box-sizing: border-box;
     cursor: pointer;
-    margin-top: 2px;
 }
 
 /* 圓形選色器通用樣式 */
@@ -1725,7 +1725,6 @@
     border-radius: 4px;
     color: var(--SmartThemeQuoteColor);
     opacity: 0.7;
-    position: relative;
 }
 
 .tags-section-manage .tag-edit-btn svg {
@@ -1751,22 +1750,26 @@
     background: rgba(76, 175, 80, 0.2);
 }
 
-/* 標籤編輯展開區域 */
-.tag-edit-expand-area {
+/* 標籤管理內容區域（包含 select 和編輯區域） */
+.tag-manage-content-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* 標籤編輯區域 */
+.tag-edit-area {
     display: none;
     align-items: center;
     gap: 8px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.tag-edit-expand-area.expanded {
-    display: flex;
+    flex: 1;
+    width: 100%;
 }
 
 .tag-edit-name-input {
-    width: 100px;
-    min-width: 80px;
+    flex: 1;
+    min-width: 60px;
     padding: 6px 10px;
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 6px;
@@ -1788,27 +1791,14 @@
     box-shadow: 0 0 5px color-mix(in srgb, var(--bookmark-accent-color) 30%, transparent);
 }
 
-/* 編輯模式時隱藏 select 的部分寬度調整 */
-.tag-manage-form.editing .tag-manage-select {
-    flex: 0 0 auto;
-    min-width: 80px;
-    max-width: 120px;
-}
-
 /* 響應式：窄螢幕時調整編輯區域 */
 @media (max-width: 600px) {
-    .tag-edit-expand-area {
+    .tag-edit-area {
         gap: 5px;
     }
     
     .tag-edit-name-input {
-        width: 70px;
-        min-width: 60px;
-    }
-    
-    .tag-manage-form.editing .tag-manage-select {
-        min-width: 60px;
-        max-width: 80px;
+        min-width: 50px;
     }
 }
 

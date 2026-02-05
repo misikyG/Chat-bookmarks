@@ -1761,18 +1761,20 @@ async function showBookmarksPanel() {
                     <div class="tags-panel-section tags-section-manage">
                         <div class="tags-panel-title">${t('panel_tagManage')}</div>
                         <div class="tag-manage-form">
-                            <select class="tag-manage-select">
-                                ${tagSelectOptionsHtml}
-                            </select>
-                            <div class="tag-edit-expand-area" style="display: none;">
-                                <input type="text" class="tag-edit-name-input" placeholder="${t('panel_tagEditName')}" maxlength="20">
-                                <label class="color-picker-round">
-                                    <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
-                                </label>
-                                <select class="tag-manage-scope-select" title="${t('panel_tagChangeScope')}">
-                                    <option value="global">${t('tag_scopeGlobal')}</option>
-                                    <option value="character">${t('tag_scopeCharacter')}</option>
+                            <div class="tag-manage-content-area">
+                                <select class="tag-manage-select">
+                                    ${tagSelectOptionsHtml}
                                 </select>
+                                <div class="tag-edit-area" style="display: none;">
+                                    <input type="text" class="tag-edit-name-input" placeholder="${t('panel_tagEditName')}" maxlength="20">
+                                    <label class="color-picker-round">
+                                        <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
+                                    </label>
+                                    <select class="tag-manage-scope-select" title="${t('panel_tagChangeScope')}">
+                                        <option value="global">${t('tag_scopeGlobal')}</option>
+                                        <option value="character">${t('tag_scopeCharacter')}</option>
+                                    </select>
+                                </div>
                             </div>
                             <button class="menu_button tag-edit-btn" title="${t('panel_tagEdit')}">
                                 <svg class="tag-edit-icon-pen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M362.7 19.3L314.3 67.7 444.3 197.7l48.4-48.4c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l119.8-35.4c14.1-4.2 27-11.8 37.4-22.2L421.7 219.3 291.7 90.3z"/></svg>
@@ -2071,14 +2073,14 @@ async function showBookmarksPanel() {
     const exitTagEditMode = () => {
         isTagEditMode = false;
         const editBtn = dlg.find('.tag-edit-btn');
-        const expandArea = dlg.find('.tag-edit-expand-area');
-        const manageForm = dlg.find('.tag-manage-form');
+        const selectEl = dlg.find('.tag-manage-select');
+        const editArea = dlg.find('.tag-edit-area');
         
         editBtn.removeClass('editing');
         editBtn.find('.tag-edit-icon-pen').show();
         editBtn.find('.tag-edit-icon-check').hide();
-        expandArea.removeClass('expanded').hide();
-        manageForm.removeClass('editing');
+        selectEl.show();
+        editArea.hide();
     };
     
     const enterTagEditMode = () => {
@@ -2096,9 +2098,8 @@ async function showBookmarksPanel() {
         
         isTagEditMode = true;
         const editBtn = dlg.find('.tag-edit-btn');
-        const expandArea = dlg.find('.tag-edit-expand-area');
+        const editArea = dlg.find('.tag-edit-area');
         const nameInput = dlg.find('.tag-edit-name-input');
-        const manageForm = dlg.find('.tag-manage-form');
         
         // 設置當前標籤名稱
         nameInput.val(tag.name);
@@ -2110,8 +2111,8 @@ async function showBookmarksPanel() {
         editBtn.addClass('editing');
         editBtn.find('.tag-edit-icon-pen').hide();
         editBtn.find('.tag-edit-icon-check').show();
-        expandArea.addClass('expanded').show();
-        manageForm.addClass('editing');
+        selectEl.hide();
+        editArea.css('display', 'flex');
         
         // 聚焦到名稱輸入框
         setTimeout(() => nameInput.focus().select(), 100);
