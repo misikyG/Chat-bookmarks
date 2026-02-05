@@ -38,6 +38,7 @@
     "toast_tagAdded": "タグ「{0}」を追加しました",
     "toast_tagSelectFirst": "削除するタグを先に選択してください",
     "toast_tagDeleted": "タグ「{0}」を削除しました",
+    "toast_tagUpdated": "タグ「{0}」を更新しました",
     
     "toast_settingsReset": "設定をデフォルトに戻しました",
     
@@ -84,6 +85,8 @@
     "panel_tagEnterNew": "新しいタグを入力",
     "panel_tagSelectColor": "色を選択",
     "panel_tagChangeColor": "色を変更",
+    "panel_tagEdit": "タグを編集",
+    "panel_tagEditName": "新しい名前を入力",
     "panel_tagDelete": "タグを削除",
     "panel_tagFilter": "タグフィルター",
     "panel_tagFilterHint": "（複数選択可）",

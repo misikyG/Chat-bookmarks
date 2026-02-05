@@ -1711,6 +1711,107 @@
     background: rgba(255, 68, 68, 0.1);
 }
 
+/* 標籤編輯按鈕 */
+.tags-section-manage .tag-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.7;
+    position: relative;
+}
+
+.tags-section-manage .tag-edit-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tags-section-manage .tag-edit-btn:hover {
+    opacity: 1;
+    color: var(--bookmark-accent-color);
+    border-color: var(--bookmark-accent-color);
+    background: color-mix(in srgb, var(--bookmark-accent-color) 20%, transparent);
+}
+
+.tags-section-manage .tag-edit-btn.editing {
+    opacity: 1;
+    color: #4CAF50;
+    border-color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.tags-section-manage .tag-edit-btn.editing:hover {
+    background: rgba(76, 175, 80, 0.2);
+}
+
+/* 標籤編輯展開區域 */
+.tag-edit-expand-area {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.tag-edit-expand-area.expanded {
+    display: flex;
+}
+
+.tag-edit-name-input {
+    width: 100px;
+    min-width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.tag-edit-name-input::placeholder {
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+}
+
+.tag-edit-name-input:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--bookmark-accent-color) 30%, transparent);
+}
+
+/* 編輯模式時隱藏 select 的部分寬度調整 */
+.tag-manage-form.editing .tag-manage-select {
+    flex: 0 0 auto;
+    min-width: 80px;
+    max-width: 120px;
+}
+
+/* 響應式：窄螢幕時調整編輯區域 */
+@media (max-width: 600px) {
+    .tag-edit-expand-area {
+        gap: 5px;
+    }
+    
+    .tag-edit-name-input {
+        width: 70px;
+        min-width: 60px;
+    }
+    
+    .tag-manage-form.editing .tag-manage-select {
+        min-width: 60px;
+        max-width: 80px;
+    }
+}
+
 /* 標籤範圍提示 */
 .tags-scope-hint {
     font-size: 0.8em;

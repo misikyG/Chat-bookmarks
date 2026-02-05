@@ -1764,13 +1764,20 @@ async function showBookmarksPanel() {
                             <select class="tag-manage-select">
                                 ${tagSelectOptionsHtml}
                             </select>
-                            <label class="color-picker-round">
-                                <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
-                            </label>
-                            <select class="tag-manage-scope-select" title="${t('panel_tagChangeScope')}">
-                                <option value="global">${t('tag_scopeGlobal')}</option>
-                                <option value="character">${t('tag_scopeCharacter')}</option>
-                            </select>
+                            <div class="tag-edit-expand-area" style="display: none;">
+                                <input type="text" class="tag-edit-name-input" placeholder="${t('panel_tagEditName')}" maxlength="20">
+                                <label class="color-picker-round">
+                                    <input type="color" class="tag-manage-color" value="${customTags.length > 0 ? customTags[0].color : '#ffe084'}" title="${t('panel_tagChangeColor')}">
+                                </label>
+                                <select class="tag-manage-scope-select" title="${t('panel_tagChangeScope')}">
+                                    <option value="global">${t('tag_scopeGlobal')}</option>
+                                    <option value="character">${t('tag_scopeCharacter')}</option>
+                                </select>
+                            </div>
+                            <button class="menu_button tag-edit-btn" title="${t('panel_tagEdit')}">
+                                <svg class="tag-edit-icon-pen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M362.7 19.3L314.3 67.7 444.3 197.7l48.4-48.4c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l119.8-35.4c14.1-4.2 27-11.8 37.4-22.2L421.7 219.3 291.7 90.3z"/></svg>
+                                <svg class="tag-edit-icon-check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em" style="display: none;"><path fill="currentColor" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>
+                            </button>
                             <button class="menu_button tag-delete-btn" title="${t('panel_tagDelete')}">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
                             </button>
@@ -1897,16 +1904,6 @@ async function showBookmarksPanel() {
             ${tagFilterHtml}
         `);
     };
-    
-    dlg.on('change', '.tag-manage-select', function() {
-        const tagId = $(this).val();
-        const tags = getCustomTags();
-        const tag = tags.find(t => t.id === tagId);
-        if (tag) {
-            dlg.find('.tag-manage-color').val(tag.color);
-            dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
-        }
-    });
 
     const updateHeaderButtonsActiveState = () => {
         const quickActionVisible = dlg.find('.bookmarks-quick-action').is(':visible');
@@ -2058,11 +2055,144 @@ async function showBookmarksPanel() {
         await deleteCustomTag(tagId);
         await updateTagsPanel();
         
+        // 退出編輯模式（如果在編輯中）
+        exitTagEditMode();
+        
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
         
         toastr.info(t('toast_tagDeleted', tag.name), t('toast_tag'));
+    });
+    
+    // 標籤編輯功能
+    let isTagEditMode = false;
+    
+    const exitTagEditMode = () => {
+        isTagEditMode = false;
+        const editBtn = dlg.find('.tag-edit-btn');
+        const expandArea = dlg.find('.tag-edit-expand-area');
+        const manageForm = dlg.find('.tag-manage-form');
+        
+        editBtn.removeClass('editing');
+        editBtn.find('.tag-edit-icon-pen').show();
+        editBtn.find('.tag-edit-icon-check').hide();
+        expandArea.removeClass('expanded').hide();
+        manageForm.removeClass('editing');
+    };
+    
+    const enterTagEditMode = () => {
+        const selectEl = dlg.find('.tag-manage-select');
+        const tagId = selectEl.val();
+        
+        if (!tagId) {
+            toastr.warning(t('toast_tagSelectFirst'), t('toast_tag'));
+            return;
+        }
+        
+        const tags = getCustomTags();
+        const tag = tags.find(t => t.id === tagId);
+        if (!tag) return;
+        
+        isTagEditMode = true;
+        const editBtn = dlg.find('.tag-edit-btn');
+        const expandArea = dlg.find('.tag-edit-expand-area');
+        const nameInput = dlg.find('.tag-edit-name-input');
+        const manageForm = dlg.find('.tag-manage-form');
+        
+        // 設置當前標籤名稱
+        nameInput.val(tag.name);
+        
+        // 更新顏色和範圍選擇器的值
+        dlg.find('.tag-manage-color').val(tag.color);
+        dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
+        
+        editBtn.addClass('editing');
+        editBtn.find('.tag-edit-icon-pen').hide();
+        editBtn.find('.tag-edit-icon-check').show();
+        expandArea.addClass('expanded').show();
+        manageForm.addClass('editing');
+        
+        // 聚焦到名稱輸入框
+        setTimeout(() => nameInput.focus().select(), 100);
+    };
+    
+    const saveTagEdit = async () => {
+        const selectEl = dlg.find('.tag-manage-select');
+        const tagId = selectEl.val();
+        const nameInput = dlg.find('.tag-edit-name-input');
+        const newName = nameInput.val().trim();
+        const newColor = dlg.find('.tag-manage-color').val();
+        const newScope = dlg.find('.tag-manage-scope-select').val();
+        
+        if (!tagId) return;
+        
+        const tags = getCustomTags();
+        const tag = tags.find(t => t.id === tagId);
+        if (!tag) return;
+        
+        // 更新標籤屬性
+        if (newName && newName !== tag.name) {
+            tag.name = newName;
+        }
+        tag.color = newColor;
+        tag.scope = newScope;
+        
+        if (newScope === 'character') {
+            tag.characterKey = getCurrentCharacterKey();
+        } else {
+            delete tag.characterKey;
+        }
+        
+        saveCustomTags(tags);
+        
+        exitTagEditMode();
+        await updateTagsPanel();
+        
+        const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+        const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+        await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
+        
+        toastr.success(t('toast_tagUpdated', tag.name), t('toast_tag'));
+    };
+    
+    dlg.find('.tag-edit-btn').on('click', async function(e) {
+        e.stopPropagation();
+        
+        if (isTagEditMode) {
+            // 儲存變更並退出編輯模式
+            await saveTagEdit();
+        } else {
+            // 進入編輯模式
+            enterTagEditMode();
+        }
+    });
+    
+    // 當選擇的標籤改變時，如果在編輯模式，更新輸入框的值
+    dlg.on('change', '.tag-manage-select', function() {
+        const tagId = $(this).val();
+        const tags = getCustomTags();
+        const tag = tags.find(t => t.id === tagId);
+        if (tag) {
+            dlg.find('.tag-manage-color').val(tag.color);
+            dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
+            
+            // 如果在編輯模式，更新名稱輸入框
+            if (isTagEditMode) {
+                dlg.find('.tag-edit-name-input').val(tag.name);
+            }
+        }
+    });
+    
+    // 編輯模式下按 Enter 儲存
+    dlg.on('keydown', '.tag-edit-name-input', async function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            await saveTagEdit();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            exitTagEditMode();
+        }
     });
     
     dlg.on('change', '.tag-manage-color', async function() {
@@ -2072,16 +2202,20 @@ async function showBookmarksPanel() {
         
         if (!tagId) return;
         
-        const tags = getCustomTags();
-        const tag = tags.find(t => t.id === tagId);
-        if (tag) {
-            tag.color = newColor;
-            saveCustomTags(tags);
-            
-            await updateTagsPanel();
-            const activeChat = dlg.find('.bookmark-tab.active').data('chat');
-            await loadTabContent(dlg, activeChat, currentChatName, popup);
+        // 如果不在編輯模式，直接儲存顏色變更（向後相容）
+        if (!isTagEditMode) {
+            const tags = getCustomTags();
+            const tag = tags.find(t => t.id === tagId);
+            if (tag) {
+                tag.color = newColor;
+                saveCustomTags(tags);
+                
+                await updateTagsPanel();
+                const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+                await loadTabContent(dlg, activeChat, currentChatName, popup);
+            }
         }
+        // 如果在編輯模式，顏色會在點擊勾勾時一併儲存
     });
     
     dlg.on('click', '.tag-filter-item', async function() {
