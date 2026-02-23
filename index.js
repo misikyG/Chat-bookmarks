@@ -1168,30 +1168,22 @@ async function showBookmarkPreview(messageId, chatFileName) {
                 </span>
                 <span class="preview-chat-name">${escapeHtml(chatFileName.replace('.jsonl', ''))}</span>
             </div>
-            <div class="bookmark-preview-load-more load-more-up ${previewData.canLoadMore.up ? '' : 'hidden'}" data-direction="up">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="16" height="16"><path fill="currentColor" d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"/></svg>
-            </div>
-            <div class="bookmark-preview-messages" data-total="${chatMessages ? chatMessages.length : chat.length}">
-                ${buildPreviewMessagesHtml(previewData.messages)}
-            </div>
-            <div class="bookmark-preview-load-more load-more-down ${previewData.canLoadMore.down ? '' : 'hidden'}" data-direction="down">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="16" height="16"><path fill="currentColor" d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
-            </div>
-            <div class="bookmark-preview-actions">
-                <button class="menu_button bookmark-jump-btn" data-chat="${chatFileName}" data-msgid="${messageId}">
-                    <i class="fa-solid fa-arrow-right"></i> ${t('panel_jumpToMessage')}
-                </button>
+            <div class="bookmark-preview-body">
+                <div class="bookmark-preview-load-more load-more-up ${previewData.canLoadMore.up ? '' : 'hidden'}" data-direction="up">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="16" height="16"><path fill="currentColor" d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"/></svg>
+                </div>
+                <div class="bookmark-preview-messages" data-total="${chatMessages ? chatMessages.length : chat.length}">
+                    ${buildPreviewMessagesHtml(previewData.messages)}
+                </div>
+                <div class="bookmark-preview-load-more load-more-down ${previewData.canLoadMore.down ? '' : 'hidden'}" data-direction="down">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="16" height="16"><path fill="currentColor" d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+                </div>
             </div>
         </div>
     `;
 
     const popup = new Popup(popupContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
     const dlg = $(popup.dlg);
-
-    dlg.find('.bookmark-jump-btn').on('click', async function() {
-        popup.complete(0);
-        await loadChatAndJump($(this).data('chat'), $(this).data('msgid'));
-    });
 
     dlg.find('.bookmark-preview-load-more').on('click', async function() {
         const direction = $(this).data('direction');
