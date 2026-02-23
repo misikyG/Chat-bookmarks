@@ -478,7 +478,7 @@
     color: var(--SmartThemeBodyColor);
     height: 32px;
     box-sizing: border-box;
-    margin-top: 0;
+    margin-top: 3px;
 }
 
 .bookmarks-settings-panel .bookmark-reset-defaults-btn {
@@ -1663,6 +1663,7 @@
     height: 32px;
     box-sizing: border-box;
     cursor: pointer;
+    margin-top: 3px;
 }
 
 /* 圓形選色器通用樣式 */
@@ -2317,7 +2318,7 @@
     box-sizing: border-box;
     cursor: pointer;
     min-width: 70px;
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
 .tag-scope-select:focus,
