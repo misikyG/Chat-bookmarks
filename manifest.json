@@ -6,7 +6,7 @@
     "js": "index.js",
     "css": "style.css",
     "author": "包",
-    "version": "1.0.0",
+    "version": "1.2.4",
     "homePage": "",
     "description": "在聊天訊息上標記書籤，可以預覽和跳轉到書籤訊息，支援跨聊天視窗瀏覽同角色的所有書籤。"
 }

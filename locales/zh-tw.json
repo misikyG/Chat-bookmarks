@@ -42,6 +42,16 @@
     
     "toast_settingsReset": "已恢復預設設定",
     
+    "toast_bookmarkCache": "書籤暫存箱",
+    "toast_cacheNotFound": "找不到此暫存紀錄",
+    "toast_cacheWrongCharacter": "請先切換到「{0}」再進行回溯",
+    "toast_cacheNoChats": "當前角色沒有可用的聊天視窗",
+    "toast_cacheChatNotFound": "找不到指定的聊天視窗",
+    "toast_cacheRestoreFailed": "回溯失敗，無法載入目標聊天資料",
+    "toast_cacheRestored": "已成功回溯 {0} 個書籤至「{1}」",
+    "toast_cacheClearedAll": "已清除所有暫存紀錄",
+    "toast_cacheDeleted": "已刪除此暫存紀錄",
+    
     "toast_slashPanelOpened": "書籤面板已開啟",
     "toast_slashBookmarkAdded": "已為訊息 #{0} 添加書籤",
     "toast_slashBookmarkRemoved": "已移除訊息 #{0} 的書籤",
@@ -68,6 +78,11 @@
     "btn_editName": "編輯名稱",
     "btn_confirm": "確認",
     "btn_clearSearch": "清除搜索",
+    
+    "btn_cache": "書籤暫存箱",
+    "btn_cacheClearAll": "清除所有暫存",
+    "btn_cacheRestore": "回溯",
+    "btn_cacheDelete": "刪除此暫存",
     
     "panel_bookmarksOf": "{0} 的書籤",
     "panel_group": "群組",
@@ -117,6 +132,19 @@
     "panel_sortBookmarkNew": "書籤由新到舊",
     "panel_sortBookmarkOld": "書籤由舊到新",
     "panel_resetDefaults": "恢復預設設定",
+    
+    "panel_cacheTitle": "書籤暫存箱",
+    "panel_cacheHint": "當書籤因自動清理、聊天被刪除或資料遺失而消失時，會暫存在這裡（最多 5 筆）",
+    "cache_empty": "目前沒有任何暫存紀錄",
+    "cache_reasonBranch": "分支清理",
+    "cache_reasonMismatch": "名稱不匹配",
+    "cache_reasonDeleted": "聊天已刪除",
+    "cache_reasonDataLost": "資料遺失",
+    "cache_originChat": "原始聊天",
+    "cache_restorePrompt": "將 {0} 個書籤（原屬於「{1}」）回溯到哪個聊天視窗？",
+    "cache_selectTarget": "選擇目標聊天視窗：",
+    "cache_confirmClearTitle": "清除所有暫存",
+    "cache_confirmClearMessage": "確定要清除所有書籤暫存紀錄嗎？此操作無法復原。",
     
     "panel_confirmResetTitle": "恢復預設設定",
     "panel_confirmResetMessage": "確定要將所有設定恢復為預設值嗎？（書籤資料不受影響）",

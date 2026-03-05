@@ -42,6 +42,16 @@
     
     "toast_settingsReset": "設定をデフォルトに戻しました",
     
+    "toast_bookmarkCache": "ブックマークキャッシュ",
+    "toast_cacheNotFound": "キャッシュが見つかりません",
+    "toast_cacheWrongCharacter": "復元するにはまず「{0}」に切り替えてください",
+    "toast_cacheNoChats": "現在のキャラに利用可能なチャットがありません",
+    "toast_cacheChatNotFound": "指定されたチャットが見つかりません",
+    "toast_cacheRestoreFailed": "復元失敗、対象チャットデータを読み込めません",
+    "toast_cacheRestored": "{0} 個のブックマークを「{1}」に復元しました",
+    "toast_cacheClearedAll": "すべてのキャッシュをクリアしました",
+    "toast_cacheDeleted": "キャッシュを削除しました",
+    
     "toast_slashPanelOpened": "ブックマークパネルを開きました",
     "toast_slashBookmarkAdded": "メッセージ #{0} にブックマークを追加しました",
     "toast_slashBookmarkRemoved": "メッセージ #{0} のブックマークを削除しました",
@@ -68,6 +78,11 @@
     "btn_editName": "名前を編集",
     "btn_confirm": "確認",
     "btn_clearSearch": "検索をクリア",
+    
+    "btn_cache": "ブックマークキャッシュ",
+    "btn_cacheClearAll": "すべてのキャッシュをクリア",
+    "btn_cacheRestore": "復元",
+    "btn_cacheDelete": "このキャッシュを削除",
     
     "panel_bookmarksOf": "{0} のブックマーク",
     "panel_group": "グループ",
@@ -117,6 +132,19 @@
     "panel_sortBookmarkNew": "ブックマーク新しい順",
     "panel_sortBookmarkOld": "ブックマーク古い順",
     "panel_resetDefaults": "デフォルト設定に戻す",
+    
+    "panel_cacheTitle": "ブックマークキャッシュ",
+    "panel_cacheHint": "自動クリーンアップ、チャット削除、またはデータ消失でブックマークが失われた場合、ここに保存されます（最大 5 件）",
+    "cache_empty": "キャッシュがありません",
+    "cache_reasonBranch": "ブランチクリーンアップ",
+    "cache_reasonMismatch": "名前不一致",
+    "cache_reasonDeleted": "チャット削除",
+    "cache_reasonDataLost": "データ消失",
+    "cache_originChat": "元のチャット",
+    "cache_restorePrompt": "{0} 個のブックマーク（元「{1}」）をどのチャットに復元しますか？",
+    "cache_selectTarget": "対象チャットを選択：",
+    "cache_confirmClearTitle": "すべてのキャッシュをクリア",
+    "cache_confirmClearMessage": "すべてのブックマークキャッシュをクリアしますか？この操作は取り消しできません。",
     
     "panel_confirmResetTitle": "デフォルト設定に戻す",
     "panel_confirmResetMessage": "すべての設定をデフォルトに戻しますか？（ブックマークデータには影響しません）",

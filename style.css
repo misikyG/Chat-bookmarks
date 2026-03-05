@@ -258,7 +258,8 @@
 .bookmarks-settings-btn,
 .bookmarks-tags-btn,
 .bookmarks-quick-action-btn,
-.bookmarks-search-btn {
+.bookmarks-search-btn,
+.bookmarks-cache-btn {
     padding: 7px 10px;
     min-width: auto;
     font-size: 1em;
@@ -271,7 +272,8 @@
 .bookmarks-settings-btn.active,
 .bookmarks-tags-btn.active,
 .bookmarks-quick-action-btn.active,
-.bookmarks-search-btn.active {
+.bookmarks-search-btn.active,
+.bookmarks-cache-btn.active {
     background-color: var(--bookmark-accent-color);
     color: var(--SmartThemeBlurTintColor);
     border-color: var(--bookmark-accent-color);
@@ -280,14 +282,16 @@
 .bookmarks-settings-btn.active i,
 .bookmarks-tags-btn.active i,
 .bookmarks-quick-action-btn.active svg,
-.bookmarks-search-btn.active i {
+.bookmarks-search-btn.active i,
+.bookmarks-cache-btn.active svg {
     color: var(--SmartThemeBlurTintColor);
 }
 
 .bookmarks-settings-btn i,
 .bookmarks-tags-btn i,
 .bookmarks-quick-action-btn svg,
-.bookmarks-search-btn i {
+.bookmarks-search-btn i,
+.bookmarks-cache-btn svg {
     font-size: 1.1em;
     width: 1.1em;
     height: 1.1em;
@@ -411,7 +415,7 @@
 .bookmarks-settings-panel {
     background: var(--SmartThemeBlurTintColor);
     border-radius: 8px;
-    padding: 15px;
+    padding: 12px 15px;
     margin-bottom: 10px;
     border: 1px solid var(--SmartThemeBorderColor);
 }
@@ -1579,7 +1583,7 @@
 .bookmarks-tags-panel {
     background: var(--SmartThemeBlurTintColor);
     border-radius: 8px;
-    padding: 15px;
+    padding: 12px 15px;
     margin-bottom: 10px;
     border: 1px solid var(--SmartThemeBorderColor);
 }
@@ -2305,6 +2309,225 @@
     height: 10px;
 }
 
+/* ===== 書籤暫存箱 ===== */
+.bookmarks-cache-panel {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.cache-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.cache-panel-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.cache-panel-title svg {
+    color: var(--bookmark-accent-color);
+    flex-shrink: 0;
+}
+
+.cache-panel-hint {
+    font-weight: normal;
+    font-size: 0.8em;
+    color: var(--SmartThemeQuoteColor);
+    opacity: 0.6;
+}
+
+.cache-clear-all-btn {
+    padding: 4px 10px !important;
+    height: 28px !important;
+    font-size: 0.8em !important;
+    display: flex !important;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    color: var(--SmartThemeQuoteColor) !important;
+    border-color: var(--SmartThemeQuoteColor) !important;
+}
+
+.cache-clear-all-btn:hover {
+    color: #e74c3c !important;
+    border-color: #e74c3c !important;
+}
+
+.cache-clear-all-btn svg {
+    width: 0.9em;
+    height: 0.9em;
+}
+
+.cache-entries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cache-empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--SmartThemeQuoteColor);
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.cache-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor) 60%, transparent);
+    transition: border-color 0.15s ease;
+}
+
+.cache-entry:hover {
+    border-color: var(--bookmark-accent-color);
+}
+
+.cache-entry-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82em;
+}
+
+.cache-entry-character {
+    font-weight: 600;
+    color: var(--SmartThemeBodyColor);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.cache-entry-character i {
+    color: var(--bookmark-accent-color);
+    font-size: 0.85em;
+}
+
+.cache-entry-count {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--bookmark-accent-color);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cache-entry-count svg {
+    width: 0.85em;
+    height: 0.85em;
+}
+
+.cache-entry-origin {
+    color: var(--SmartThemeBodyColor);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+.cache-entry-origin i {
+    color: var(--SmartThemeQuoteColor);
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.cache-entry-reason {
+    color: var(--SmartThemeQuoteColor);
+    padding: 1px 6px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cache-entry-time {
+    color: var(--SmartThemeQuoteColor);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cache-entry-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.cache-restore-btn {
+    padding: 0 8px !important;
+    height: 26px !important;
+    font-size: 0.78em !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box !important;
+    color: var(--bookmark-accent-color) !important;
+    border-color: var(--bookmark-accent-color) !important;
+}
+
+.cache-restore-btn i,
+.cache-restore-btn svg {
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cache-restore-btn:hover {
+    background: var(--bookmark-accent-color) !important;
+    color: var(--SmartThemeBlurTintColor) !important;
+}
+
+.cache-delete-btn {
+    padding: 0 6px !important;
+    height: 26px !important;
+    font-size: 0.78em !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box !important;
+    color: var(--SmartThemeQuoteColor) !important;
+    border-color: var(--SmartThemeBorderColor) !important;
+}
+
+.cache-delete-btn i,
+.cache-delete-btn svg {
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cache-delete-btn:hover {
+    color: #e74c3c !important;
+    border-color: #e74c3c !important;
+}
+
 /* ===== 標籤範圍選擇器 ===== */
 .tag-scope-select,
 .tag-manage-scope-select {
@@ -2349,5 +2572,20 @@
     .tag-manage-scope-select {
         min-width: 60px;
         font-size: 0.75em;
+    }
+    
+    .cache-entry {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .cache-entry-actions {
+        justify-content: flex-end;
+        padding-top: 6px;
+        border-top: 1px solid var(--SmartThemeBorderColor);
+    }
+    
+    .cache-entry-origin {
+        max-width: 150px;
     }
 }

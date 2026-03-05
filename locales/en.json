@@ -42,6 +42,16 @@
     
     "toast_settingsReset": "Settings have been reset to defaults",
     
+    "toast_bookmarkCache": "Bookmark Cache",
+    "toast_cacheNotFound": "Cache entry not found",
+    "toast_cacheWrongCharacter": "Please switch to \"{0}\" first to restore",
+    "toast_cacheNoChats": "No available chats for the current character",
+    "toast_cacheChatNotFound": "The specified chat was not found",
+    "toast_cacheRestoreFailed": "Restore failed, unable to load target chat data",
+    "toast_cacheRestored": "Successfully restored {0} bookmarks to \"{1}\"",
+    "toast_cacheClearedAll": "All cache entries have been cleared",
+    "toast_cacheDeleted": "Cache entry has been deleted",
+    
     "toast_slashPanelOpened": "Bookmark panel opened",
     "toast_slashBookmarkAdded": "Bookmark added for message #{0}",
     "toast_slashBookmarkRemoved": "Bookmark removed from message #{0}",
@@ -68,6 +78,11 @@
     "btn_editName": "Edit name",
     "btn_confirm": "Confirm",
     "btn_clearSearch": "Clear search",
+    
+    "btn_cache": "Bookmark Cache",
+    "btn_cacheClearAll": "Clear all cache",
+    "btn_cacheRestore": "Restore",
+    "btn_cacheDelete": "Delete this cache",
     
     "panel_bookmarksOf": "{0}'s Bookmarks",
     "panel_group": "Group",
@@ -117,6 +132,19 @@
     "panel_sortBookmarkNew": "Bookmarks newest first",
     "panel_sortBookmarkOld": "Bookmarks oldest first",
     "panel_resetDefaults": "Reset to default settings",
+    
+    "panel_cacheTitle": "Bookmark Cache",
+    "panel_cacheHint": "When bookmarks are lost due to auto-cleanup, chat deletion, or data loss, they are cached here (max 5 entries)",
+    "cache_empty": "No cached entries",
+    "cache_reasonBranch": "Branch cleanup",
+    "cache_reasonMismatch": "Name mismatch",
+    "cache_reasonDeleted": "Chat deleted",
+    "cache_reasonDataLost": "Data lost",
+    "cache_originChat": "Original chat",
+    "cache_restorePrompt": "Restore {0} bookmarks (originally from \"{1}\") to which chat?",
+    "cache_selectTarget": "Select target chat:",
+    "cache_confirmClearTitle": "Clear All Cache",
+    "cache_confirmClearMessage": "Are you sure you want to clear all bookmark cache entries? This cannot be undone.",
     
     "panel_confirmResetTitle": "Reset to Default Settings",
     "panel_confirmResetMessage": "Are you sure you want to reset all settings to defaults? (Bookmark data will not be affected)",

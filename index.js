@@ -64,7 +64,15 @@ const defaultSettings = {
     activeTagFilters: [],
     separateTagsByCharacter: true,
     searchQuery: '',
+    bookmarkCache: [],
+    bookmarkSnapshots: {},
 };
+
+const MAX_BOOKMARK_CACHE = 5;
+const MAX_BOOKMARK_SNAPSHOTS = 20;
+
+// 書籤暫存箱 SVG 圖示
+const CACHE_BOX_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1em" height="1em"><path fill="currentColor" d="M32 32H480c17.7 0 32 14.3 32 32V96c0 17.7-14.3 32-32 32H32C14.3 128 0 113.7 0 96V64C0 46.3 14.3 32 32 32zm0 128H480V416c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V160zm128 80c0 8.8 7.2 16 16 16H336c8.8 0 16-7.2 16-16s-7.2-16-16-16H176c-8.8 0-16 7.2-16 16z"/></svg>';
 
 // 當前預覽狀態
 let currentPreviewState = {
@@ -73,6 +81,14 @@ let currentPreviewState = {
     startOffset: 0,
     endOffset: 0,
     chatData: null,
+};
+
+// 記錄前一個聊天的狀態，用於偵測聊天被刪除的情況
+let previousChatState = {
+    chatFileName: '',
+    characterKey: '',
+    characterName: '',
+    bookmarks: [],
 };
 
 // ========== 工具函式 ==========
@@ -126,6 +142,249 @@ function applyCssVariables() {
         el.style.setProperty('-webkit-line-clamp', String(lineClamp));
         el.style.setProperty('line-clamp', String(lineClamp));
     });
+}
+
+// ========== 書籤暫存機制 ==========
+
+/**
+ * 取得書籤暫存列表
+ */
+function getBookmarkCache() {
+    return getSetting('bookmarkCache') || [];
+}
+
+/**
+ * 新增暫存紀錄（最多保留 MAX_BOOKMARK_CACHE 筆）
+ * @param {object} entry - 暫存項目
+ */
+function addToBookmarkCache(entry) {
+    const cache = getBookmarkCache();
+    cache.unshift(entry);
+    while (cache.length > MAX_BOOKMARK_CACHE) {
+        cache.pop();
+    }
+    setSetting('bookmarkCache', cache);
+}
+
+/**
+ * 從暫存中移除指定項目
+ */
+function removeFromBookmarkCache(cacheId) {
+    const cache = getBookmarkCache();
+    const newCache = cache.filter(e => e.id !== cacheId);
+    setSetting('bookmarkCache', newCache);
+}
+
+/**
+ * 清除所有暫存
+ */
+function clearBookmarkCache() {
+    setSetting('bookmarkCache', []);
+}
+
+/**
+ * 將被清理的書籤存入暫存箱
+ * @param {Array} bookmarks - 要暫存的書籤陣列
+ * @param {string} reason - 清理原因
+ * @param {string} currentChatFileName - 觸發清理的聊天檔案名稱
+ */
+function cacheRemovedBookmarks(bookmarks, reason, currentChatFileName) {
+    if (!bookmarks || bookmarks.length === 0) return;
+    
+    // 依照 originChatFileName 分組
+    const groups = {};
+    for (const b of bookmarks) {
+        const origin = b.originChatFileName || '(unknown)';
+        if (!groups[origin]) groups[origin] = [];
+        groups[origin].push({ ...b });
+    }
+    
+    const characterKey = getCurrentCharacterKey();
+    const characterName = this_chid !== undefined ? characters[this_chid]?.name : (selected_group ? t('panel_group') : '');
+    
+    for (const [origin, bms] of Object.entries(groups)) {
+        addToBookmarkCache({
+            id: String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8),
+            timestamp: Date.now(),
+            characterKey,
+            characterName,
+            originChatFileName: origin,
+            currentChatFileName,
+            reason,
+            bookmarks: bms,
+        });
+    }
+    
+    console.log(`Chat Bookmarks: 已將 ${bookmarks.length} 個書籤存入暫存箱`);
+}
+
+/**
+ * 回溯暫存中的書籤到指定聊天
+ * @param {string} cacheId - 暫存項目 ID
+ * @param {string} targetChatFileName - 目標聊天檔案名稱
+ */
+async function restoreBookmarksFromCache(cacheId, targetChatFileName) {
+    const cache = getBookmarkCache();
+    const entry = cache.find(e => e.id === cacheId);
+    if (!entry) {
+        toastr.error(t('toast_cacheNotFound'), t('toast_bookmarkCache'));
+        return false;
+    }
+    
+    const currentChatName = getCurrentChatFileName();
+    
+    if (targetChatFileName === currentChatName) {
+        // 回溯到當前聊天
+        const rawBookmarks = getCurrentChatBookmarksRaw();
+        let restored = 0;
+        for (const bookmark of entry.bookmarks) {
+            const b = { ...bookmark, originChatFileName: targetChatFileName };
+            if (!rawBookmarks.some(existing => existing.messageId === b.messageId && existing.originChatFileName === targetChatFileName)) {
+                rawBookmarks.push(b);
+                restored++;
+            }
+        }
+        await saveChatConditional();
+        updateAllBookmarkIcons();
+        toastr.success(t('toast_cacheRestored', restored, targetChatFileName), t('toast_bookmarkCache'));
+    } else {
+        // 回溯到其他聊天
+        const chatData = await fetchChatData(targetChatFileName);
+        if (!chatData || !Array.isArray(chatData) || chatData.length === 0) {
+            toastr.error(t('toast_cacheRestoreFailed'), t('toast_bookmarkCache'));
+            return false;
+        }
+        const metadata = chatData[0].chat_metadata || {};
+        const bookmarks = metadata.chat_bookmarks || [];
+        let restored = 0;
+        for (const bookmark of entry.bookmarks) {
+            const b = { ...bookmark, originChatFileName: targetChatFileName };
+            if (!bookmarks.some(existing => existing.messageId === b.messageId && existing.originChatFileName === targetChatFileName)) {
+                bookmarks.push(b);
+                restored++;
+            }
+        }
+        metadata.chat_bookmarks = bookmarks;
+        chatData[0].chat_metadata = metadata;
+        const success = await saveChatData(targetChatFileName, chatData);
+        if (!success) {
+            toastr.error(t('toast_cacheRestoreFailed'), t('toast_bookmarkCache'));
+            return false;
+        }
+        toastr.success(t('toast_cacheRestored', restored, targetChatFileName), t('toast_bookmarkCache'));
+    }
+    
+    // 回溯成功後從暫存中移除
+    removeFromBookmarkCache(cacheId);
+    return true;
+}
+
+// ========== 書籤快照機制 ==========
+
+/**
+ * 取得快照的鍵值
+ * @param {string} characterKey - 角色唯一識別碼
+ * @param {string} chatFileName - 聊天檔案名稱
+ * @returns {string} 快照鍵值
+ */
+function getSnapshotKey(characterKey, chatFileName) {
+    return `${characterKey}::${chatFileName}`;
+}
+
+/**
+ * 儲存書籤快照（記錄某聊天的已知正常書籤狀態）
+ * @param {string} characterKey - 角色識別碼
+ * @param {string} characterName - 角色名稱
+ * @param {string} chatFileName - 聊天檔案名稱
+ * @param {Array} bookmarks - 書籤陣列
+ */
+function saveBookmarkSnapshot(characterKey, characterName, chatFileName, bookmarks) {
+    if (!bookmarks || bookmarks.length === 0) return;
+    
+    const snapshots = getSetting('bookmarkSnapshots') || {};
+    const key = getSnapshotKey(characterKey, chatFileName);
+    snapshots[key] = {
+        characterKey,
+        characterName,
+        chatFileName,
+        bookmarks: bookmarks.map(b => ({ ...b })),
+        timestamp: Date.now(),
+    };
+    
+    // 限制快照數量，移除最舊的
+    const entries = Object.entries(snapshots);
+    if (entries.length > MAX_BOOKMARK_SNAPSHOTS) {
+        entries.sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0));
+        const toRemove = entries.slice(0, entries.length - MAX_BOOKMARK_SNAPSHOTS);
+        for (const [k] of toRemove) {
+            delete snapshots[k];
+        }
+    }
+    
+    setSetting('bookmarkSnapshots', snapshots);
+}
+
+/**
+ * 取得某聊天的書籤快照
+ * @param {string} characterKey - 角色識別碼
+ * @param {string} chatFileName - 聊天檔案名稱
+ * @returns {object|null} 快照物件或 null
+ */
+function getBookmarkSnapshot(characterKey, chatFileName) {
+    const snapshots = getSetting('bookmarkSnapshots') || {};
+    return snapshots[getSnapshotKey(characterKey, chatFileName)] || null;
+}
+
+/**
+ * 移除某聊天的書籤快照
+ * @param {string} characterKey - 角色識別碼
+ * @param {string} chatFileName - 聊天檔案名稱
+ */
+function removeBookmarkSnapshot(characterKey, chatFileName) {
+    const snapshots = getSetting('bookmarkSnapshots') || {};
+    delete snapshots[getSnapshotKey(characterKey, chatFileName)];
+    setSetting('bookmarkSnapshots', snapshots);
+}
+
+/**
+ * 更新當前聊天的書籤快照（在新增/移除書籤後呼叫）
+ */
+function updateCurrentChatSnapshot() {
+    const chatFileName = getCurrentChatFileName();
+    const characterKey = getCurrentCharacterKey();
+    const characterName = this_chid !== undefined ? characters[this_chid]?.name : '';
+    const bookmarks = chat_metadata?.chat_bookmarks || [];
+    
+    if (chatFileName && characterKey) {
+        if (bookmarks.length > 0) {
+            saveBookmarkSnapshot(characterKey, characterName, chatFileName, bookmarks);
+        } else {
+            // 如果當前書籤為空，移除快照（避免誤判）
+            removeBookmarkSnapshot(characterKey, chatFileName);
+        }
+    }
+}
+
+/**
+ * 檢查某聊天檔案是否仍然存在
+ * @param {string} chatFileName - 要檢查的聊天檔案名稱
+ * @returns {Promise<boolean>} 是否存在
+ */
+async function chatFileExists(chatFileName) {
+    if (!chatFileName) return false;
+    
+    try {
+        if (selected_group) {
+            const group = groups.find(g => g.id === selected_group);
+            return group?.chats?.includes(chatFileName) || group?.chat_id === chatFileName || false;
+        } else if (this_chid !== undefined) {
+            const chats = await getCharacterChats();
+            return chats.some(c => c.file_name.replace('.jsonl', '') === chatFileName);
+        }
+    } catch (error) {
+        console.error('Chat Bookmarks: 檢查聊天是否存在時發生錯誤:', error);
+    }
+    return false;
 }
 
 // ========== 聊天資料存取 ==========
@@ -307,6 +566,8 @@ async function cleanupInheritedBookmarks() {
         
         if (bookmarksToRemove.length > 0) {
             console.log(`Chat Bookmarks: 分支聊天偵測到 ${bookmarksToRemove.length} 個繼承的書籤，正在清理...`);
+            // 清理前先存入暫存箱
+            cacheRemovedBookmarks(bookmarksToRemove, 'cleanup_branch', currentChatFileName);
             chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
                 b.originChatFileName === currentChatFileName
             );
@@ -330,6 +591,8 @@ async function cleanupInheritedBookmarks() {
         );
         if (inheritedBookmarks.length > 0) {
             console.log(`Chat Bookmarks: 清理 ${inheritedBookmarks.length} 個不屬於此聊天的書籤`);
+            // 清理前先存入暫存箱
+            cacheRemovedBookmarks(inheritedBookmarks, 'cleanup_mismatch', currentChatFileName);
             chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
                 !b.originChatFileName || b.originChatFileName === currentChatFileName
             );
@@ -432,6 +695,7 @@ async function addBookmark(messageId) {
 
     updateBookmarkIcon(messageId, true);
     await saveChatConditional();
+    updateCurrentChatSnapshot();
 
     if (getSetting('showNotifications')) {
         toastr.success(t('toast_bookmarkAdded'), t('toast_bookmark'));
@@ -473,6 +737,7 @@ async function removeBookmark(messageId) {
     rawBookmarks.splice(index, 1);
     updateBookmarkIcon(messageId, false);
     await saveChatConditional();
+    updateCurrentChatSnapshot();
 
     if (getSetting('showNotifications')) {
         toastr.info(t('toast_bookmarkRemoved'), t('toast_bookmark'));
@@ -1713,6 +1978,7 @@ async function showBookmarksPanel() {
                     <button class="menu_button bookmarks-tags-btn" title="${t('btn_tagManagement')}"><i class="fa-solid fa-tags"></i></button>
                     <button class="menu_button bookmarks-search-btn" title="${t('btn_search')}"><i class="fa-solid fa-magnifying-glass"></i></button>
                     <button class="menu_button bookmarks-settings-btn" title="${t('btn_settings')}"><i class="fa-solid fa-gear"></i></button>
+                    <button class="menu_button bookmarks-cache-btn" title="${t('btn_cache')}">${CACHE_BOX_ICON}</button>
                 </div>
             </div>
             
@@ -1831,6 +2097,17 @@ async function showBookmarksPanel() {
                 </div>
             </div>
             
+            <div class="bookmarks-cache-panel" style="display: none;">
+                <div class="cache-panel-header">
+                    <div class="cache-panel-title">${CACHE_BOX_ICON} ${t('panel_cacheTitle')} <span class="cache-panel-hint">${t('panel_cacheHint')}</span></div>
+                    <button class="menu_button cache-clear-all-btn" title="${t('btn_cacheClearAll')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em"><path fill="currentColor" d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>
+                        <span>${t('btn_cacheClearAll')}</span>
+                    </button>
+                </div>
+                <div class="cache-entries-list"></div>
+            </div>
+            
             <div class="bookmarks-tabs-container">
                 <div class="bookmarks-tabs">
                     <div class="bookmarks-tabs-scrollable">
@@ -1904,11 +2181,13 @@ async function showBookmarksPanel() {
         const tagsPanelVisible = dlg.find('.bookmarks-tags-panel').is(':visible');
         const searchPanelVisible = dlg.find('.bookmarks-search-panel').is(':visible');
         const settingsPanelVisible = dlg.find('.bookmarks-settings-panel').is(':visible');
+        const cachePanelVisible = dlg.find('.bookmarks-cache-panel').is(':visible');
         
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', quickActionVisible);
         dlg.find('.bookmarks-tags-btn').toggleClass('active', tagsPanelVisible);
         dlg.find('.bookmarks-search-btn').toggleClass('active', searchPanelVisible);
         dlg.find('.bookmarks-settings-btn').toggleClass('active', settingsPanelVisible);
+        dlg.find('.bookmarks-cache-btn').toggleClass('active', cachePanelVisible);
     };
 
     dlg.find('.bookmarks-quick-action-btn').on('click', () => {
@@ -1918,12 +2197,14 @@ async function showBookmarksPanel() {
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
+        dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-tags-btn').removeClass('active');
         dlg.find('.bookmarks-search-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
+        dlg.find('.bookmarks-cache-btn').removeClass('active');
     });
 
     dlg.find('.bookmarks-tags-btn').on('click', () => {
@@ -1933,12 +2214,14 @@ async function showBookmarksPanel() {
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
+        dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
         dlg.find('.bookmarks-tags-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-search-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
+        dlg.find('.bookmarks-cache-btn').removeClass('active');
     });
 
     dlg.find('.bookmarks-search-btn').on('click', () => {
@@ -1948,12 +2231,14 @@ async function showBookmarksPanel() {
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
+        dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
         dlg.find('.bookmarks-search-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
+        dlg.find('.bookmarks-cache-btn').removeClass('active');
         
         if (isOpening) {
             setTimeout(() => dlg.find('.bookmark-search-input').focus(), 250);
@@ -1967,12 +2252,156 @@ async function showBookmarksPanel() {
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
+        dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
         
         dlg.find('.bookmarks-settings-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
         dlg.find('.bookmarks-search-btn').removeClass('active');
+        dlg.find('.bookmarks-cache-btn').removeClass('active');
+    });
+
+    // 暫存箱面板
+    const renderCacheEntries = () => {
+        const cache = getBookmarkCache();
+        const container = dlg.find('.cache-entries-list');
+        
+        if (cache.length === 0) {
+            container.html(`<div class="cache-empty">${t('cache_empty')}</div>`);
+            return;
+        }
+        
+        const entriesHtml = cache.map(entry => {
+            const date = new Date(entry.timestamp);
+            const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            const reasonLabel = entry.reason === 'cleanup_branch' ? t('cache_reasonBranch')
+                : entry.reason === 'chat_deleted' ? t('cache_reasonDeleted')
+                : entry.reason === 'data_lost' ? t('cache_reasonDataLost')
+                : t('cache_reasonMismatch');
+            
+            return `
+                <div class="cache-entry" data-cacheid="${escapeHtml(entry.id)}">
+                    <div class="cache-entry-info">
+                        <span class="cache-entry-character"><i class="fa-solid fa-user"></i> ${escapeHtml(entry.characterName || '?')}</span>
+                        <span class="cache-entry-count">${getBookmarkIconSvg(true)} ${entry.bookmarks.length}</span>
+                        <span class="cache-entry-origin" title="${t('cache_originChat')}: ${escapeHtml(entry.originChatFileName)}">
+                            <i class="fa-regular fa-comment"></i> ${escapeHtml(entry.originChatFileName)}
+                        </span>
+                        <span class="cache-entry-reason">${reasonLabel}</span>
+                        <span class="cache-entry-time"><i class="fa-regular fa-clock"></i> ${dateStr}</span>
+                    </div>
+                    <div class="cache-entry-actions">
+                        <button class="menu_button cache-restore-btn" title="${t('btn_cacheRestore')}">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                        <button class="menu_button cache-delete-btn" title="${t('btn_cacheDelete')}">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.html(entriesHtml);
+    };
+
+    dlg.find('.bookmarks-cache-btn').on('click', () => {
+        const panel = dlg.find('.bookmarks-cache-panel');
+        const isOpening = !panel.is(':visible');
+        
+        dlg.find('.bookmarks-tags-panel').slideUp(200);
+        dlg.find('.bookmarks-quick-action').slideUp(200);
+        dlg.find('.bookmarks-search-panel').slideUp(200);
+        dlg.find('.bookmarks-settings-panel').slideUp(200);
+        
+        if (isOpening) renderCacheEntries();
+        panel.slideToggle(200, updateHeaderButtonsActiveState);
+        
+        dlg.find('.bookmarks-cache-btn').toggleClass('active', isOpening);
+        dlg.find('.bookmarks-quick-action-btn').removeClass('active');
+        dlg.find('.bookmarks-tags-btn').removeClass('active');
+        dlg.find('.bookmarks-search-btn').removeClass('active');
+        dlg.find('.bookmarks-settings-btn').removeClass('active');
+    });
+
+    // 暫存箱 - 清除所有
+    dlg.find('.cache-clear-all-btn').on('click', async () => {
+        const confirmed = await Popup.show.confirm(t('cache_confirmClearTitle'), t('cache_confirmClearMessage'));
+        if (!confirmed) return;
+        clearBookmarkCache();
+        renderCacheEntries();
+        toastr.info(t('toast_cacheClearedAll'), t('toast_bookmarkCache'));
+    });
+
+    // 暫存箱 - 回溯單筆
+    dlg.on('click', '.cache-restore-btn', async function(e) {
+        e.stopPropagation();
+        const cacheId = $(this).closest('.cache-entry').data('cacheid');
+        const cache = getBookmarkCache();
+        const entry = cache.find(e => e.id === cacheId);
+        if (!entry) return;
+        
+        // 檢查角色是否匹配
+        const currentKey = getCurrentCharacterKey();
+        if (currentKey !== entry.characterKey) {
+            toastr.warning(t('toast_cacheWrongCharacter', entry.characterName), t('toast_bookmarkCache'));
+            return;
+        }
+        
+        // 取得可用聊天列表
+        const allChats = await getCharacterChats();
+        const chatNames = allChats.map(c => c.file_name.replace('.jsonl', ''));
+        
+        if (chatNames.length === 0) {
+            toastr.error(t('toast_cacheNoChats'), t('toast_bookmarkCache'));
+            return;
+        }
+        
+        const options = chatNames.map(name => 
+            `<option value="${escapeHtml(name)}" ${name === entry.originChatFileName ? 'selected' : ''}>${escapeHtml(name)}</option>`
+        ).join('');
+        
+        const restoreHtml = `
+            <div style="margin-bottom: 12px;">
+                ${t('cache_restorePrompt', entry.bookmarks.length, entry.originChatFileName)}
+            </div>
+            <div style="margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">${t('cache_selectTarget')}</div>
+            <select id="cache-restore-target" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--SmartThemeBorderColor); background: var(--SmartThemeBlurTintColor); color: var(--SmartThemeBodyColor);">
+                ${options}
+            </select>
+        `;
+        
+        const restorePopup = new Popup(restoreHtml, POPUP_TYPE.CONFIRM, '', { okButton: t('btn_cacheRestore'), cancelButton: t('btn_close') });
+        const result = await restorePopup.show();
+        
+        if (!result) return;
+        
+        const targetChat = $(restorePopup.dlg).find('#cache-restore-target').val();
+        if (!targetChat) return;
+        
+        if (!chatNames.includes(targetChat)) {
+            toastr.error(t('toast_cacheChatNotFound'), t('toast_bookmarkCache'));
+            return;
+        }
+        
+        const success = await restoreBookmarksFromCache(cacheId, targetChat);
+        if (success) {
+            renderCacheEntries();
+            // 重新載入當前分頁內容
+            const activeChat = dlg.find('.bookmark-tab.active').data('chat');
+            const searchQuery = dlg.find('.bookmark-search-input').val() || '';
+            await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
+        }
+    });
+
+    // 暫存箱 - 刪除單筆
+    dlg.on('click', '.cache-delete-btn', async function(e) {
+        e.stopPropagation();
+        const cacheId = $(this).closest('.cache-entry').data('cacheid');
+        removeFromBookmarkCache(cacheId);
+        renderCacheEntries();
+        toastr.info(t('toast_cacheDeleted'), t('toast_bookmarkCache'));
     });
     
     dlg.find('.tag-add-btn').on('click', async function() {
@@ -2413,8 +2842,57 @@ function addExtensionMenuButton() {
 // ========== 事件處理 ==========
 
 async function onChatChanged() {
-    // 清理從其他聊天繼承來的書籤（處理分支創建的情況）
+    const currentChatFileName = getCurrentChatFileName();
+    const currentCharacterKey = getCurrentCharacterKey();
+    const currentCharacterName = this_chid !== undefined ? characters[this_chid]?.name : '';
+    
+    // === 偵測前一個聊天是否被刪除 ===
+    // 僅在同一個角色下檢查（切換角色時不檢查）
+    if (previousChatState.chatFileName && previousChatState.bookmarks.length > 0
+        && previousChatState.characterKey === currentCharacterKey
+        && previousChatState.chatFileName !== currentChatFileName) {
+        try {
+            const prevStillExists = await chatFileExists(previousChatState.chatFileName);
+            if (!prevStillExists) {
+                console.log(`Chat Bookmarks: 偵測到前一個聊天「${previousChatState.chatFileName}」已被刪除，暫存 ${previousChatState.bookmarks.length} 個書籤`);
+                cacheRemovedBookmarks(previousChatState.bookmarks, 'chat_deleted', previousChatState.chatFileName);
+                removeBookmarkSnapshot(previousChatState.characterKey, previousChatState.chatFileName);
+            }
+        } catch (error) {
+            console.error('Chat Bookmarks: 檢查前一個聊天是否存在時發生錯誤:', error);
+        }
+    }
+    
+    // === 偵測當前聊天的書籤是否因資料遺失而消失 ===
+    if (currentChatFileName && currentCharacterKey) {
+        const currentBookmarks = chat_metadata?.chat_bookmarks || [];
+        const snapshot = getBookmarkSnapshot(currentCharacterKey, currentChatFileName);
+        
+        if (snapshot && snapshot.bookmarks.length > 0 && currentBookmarks.length === 0) {
+            console.log(`Chat Bookmarks: 偵測到「${currentChatFileName}」的書籤資料遺失（快照有 ${snapshot.bookmarks.length} 個，目前為 0），暫存書籤`);
+            cacheRemovedBookmarks(snapshot.bookmarks, 'data_lost', currentChatFileName);
+            removeBookmarkSnapshot(currentCharacterKey, currentChatFileName);
+        }
+    }
+    
+    // === 執行原有的清理邏輯（分支清理、名稱不匹配等） ===
     await cleanupInheritedBookmarks();
+    
+    // === 清理完成後，更新當前聊天的書籤快照 ===
+    if (currentChatFileName && currentCharacterKey) {
+        const bookmarksAfterCleanup = chat_metadata?.chat_bookmarks || [];
+        if (bookmarksAfterCleanup.length > 0) {
+            saveBookmarkSnapshot(currentCharacterKey, currentCharacterName, currentChatFileName, bookmarksAfterCleanup);
+        }
+    }
+    
+    // === 更新 previousChatState 為當前聊天的狀態 ===
+    previousChatState = {
+        chatFileName: currentChatFileName,
+        characterKey: currentCharacterKey,
+        characterName: currentCharacterName,
+        bookmarks: (chat_metadata?.chat_bookmarks || []).map(b => ({ ...b })),
+    };
     
     setTimeout(addBookmarkButtonsToAllMessages, 500);
 }
@@ -2468,6 +2946,7 @@ async function onMessageDeleted(newChatLength) {
         
         // 儲存變更
         await saveChatConditional();
+        updateCurrentChatSnapshot();
         
         if (getSetting('showNotifications')) {
             toastr.info(t('toast_bookmarkAutoRemoved') || '已自動移除無效的書籤', t('toast_bookmark'));
