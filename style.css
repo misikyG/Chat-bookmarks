@@ -219,10 +219,10 @@
 .bookmarks-panel {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
     max-height: 95vh;
     min-width: 550px;
     min-height: 0;
+    overflow: hidden;
 }
 
 .bookmarks-panel-header {
@@ -1443,55 +1443,55 @@
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     /* 手機版快速操作區域 */
     .bookmarks-quick-action .quick-action-row {
         flex-direction: column;
         align-items: stretch;
         gap: 8px;
     }
-    
+
     .bookmarks-quick-action .quick-action-row > * {
         width: 100%;
         box-sizing: border-box;
     }
-    
+
     .bookmarks-quick-action label {
         justify-content: flex-start;
     }
-    
+
     .bookmarks-quick-action input[type="number"] {
         min-width: unset;
         width: 100%;
     }
-    
+
     .bookmarks-quick-action .quick-action-buttons {
         display: flex;
         gap: 8px;
         width: 100%;
     }
-    
+
     .bookmarks-quick-action .menu_button {
         flex: 1;
         justify-content: center;
         padding: 8px 10px;
     }
-    
+
     /* 手機版顯示按鈕文字 */
     .bookmarks-quick-action .menu_button > span:not(.bookmark-quick-icon) {
         display: inline;
     }
-    
+
     /* 手機版快速預覽彈窗 */
     .quick-preview-container {
         min-width: unset;
         width: 100%;
     }
-    
+
     .quick-preview-text {
         max-height: 50vh;
     }
-    
+
     /* 手機版書籤項目排版調整 */
     .bookmark-item-header {
         flex-direction: row;
@@ -1499,19 +1499,19 @@
         align-items: center;
         gap: 4px;
     }
-    
+
     /* 讓聊天視窗名稱接在角色名稱後面作為後綴小字 */
     .bookmark-item-sender {
         flex-shrink: 0;
     }
-    
+
     .bookmark-item-chat-name {
         order: 0;
         margin-top: 0;
         flex-shrink: 1;
         min-width: 0;
     }
-    
+
     /* 自訂名稱在第二行 */
     .bookmark-custom-name-wrapper {
         margin-left: 0;
@@ -1520,34 +1520,34 @@
         order: 2;
         flex-basis: 100%;
     }
-    
+
     .bookmark-custom-name {
         max-width: 180px;
     }
-    
+
     .bookmark-name-input {
         width: 140px;
         max-width: 180px;
     }
-    
+
     /* 手機版標籤寬度限制：兩個中文字寬度後換行 */
     .bookmark-item-tags-area {
         max-width: 100%;
         align-items: flex-start;
     }
-    
+
     .bookmark-tags-container {
         flex-direction: row;
         flex-wrap: wrap;
         align-items: flex-start;
         gap: 4px;
     }
-    
+
     .bookmark-tag {
         white-space: normal;
         max-width: 100%;
     }
-    
+
     .bookmark-tag .tag-name {
         /* 約兩個中文字的寬度 (2em) 後換行 */
         max-width: 2.5em;
@@ -1555,7 +1555,7 @@
         white-space: normal;
         line-height: 1.2;
     }
-    
+
     /* 書籤項目右側區域調整 */
     .bookmark-item-right {
         flex-shrink: 1;
@@ -1831,7 +1831,7 @@
     .tag-edit-area {
         gap: 5px;
     }
-    
+
     .tag-edit-name-input {
         min-width: 50px;
     }
@@ -1927,25 +1927,25 @@
         flex-direction: column;
         gap: 0px;
     }
-    
+
     .tags-panel-section {
         margin-bottom: 8px;
     }
-    
+
     .tags-panel-title {
         margin-bottom: 5px;
         font-size: 0.85em;
     }
-    
+
     .tag-add-form,
     .tag-manage-form {
         gap: 5px;
     }
-    
+
     .bookmarks-tags-panel {
         padding: 10px;
     }
-    
+
     /* 設定欄目重置按鈕與排序按鈕同行 */
     .bookmarks-settings-panel .settings-row-second {
         flex-direction: row;
@@ -1953,7 +1953,7 @@
         align-items: center;
         gap: 8px;
     }
-    
+
     .bookmarks-settings-panel .bookmark-reset-defaults-btn {
         margin-left: 0;
     }
@@ -2562,29 +2562,29 @@
     .bookmark-custom-name {
         max-width: 80px;
     }
-    
+
     .bookmark-name-input {
         width: 80px;
         max-width: 100px;
     }
-    
+
     .tag-scope-select,
     .tag-manage-scope-select {
         min-width: 60px;
         font-size: 0.75em;
     }
-    
+
     .cache-entry {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .cache-entry-actions {
         justify-content: flex-end;
         padding-top: 6px;
         border-top: 1px solid var(--SmartThemeBorderColor);
     }
-    
+
     .cache-entry-origin {
         max-width: 150px;
     }

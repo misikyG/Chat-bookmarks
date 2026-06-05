@@ -104,6 +104,20 @@ function escapeHtml(text) {
 }
 
 /**
+ * 正規化聊天檔案名稱，統一移除可選的 .jsonl 副檔名。
+ */
+function normalizeChatFileName(chatFileName) {
+    return typeof chatFileName === 'string' ? chatFileName.replace(/\.jsonl$/i, '') : '';
+}
+
+/**
+ * 判斷兩個聊天檔案名稱是否指向同一個聊天。
+ */
+function isSameChatFileName(left, right) {
+    return normalizeChatFileName(left) === normalizeChatFileName(right);
+}
+
+/**
  * 取得設定值
  */
 function getSetting(key) {
@@ -133,10 +147,10 @@ function getBookmarkIconSvg(filled = false) {
 function applyCssVariables() {
     const accentColor = getSetting('accentColor');
     const lineClamp = getSetting('previewLineClamp');
-    
+
     document.documentElement.style.setProperty('--bookmark-accent-color', accentColor);
     document.documentElement.style.setProperty('--bookmark-preview-line-clamp', String(lineClamp));
-    
+
     // 同時更新已存在的書籤項目文字的行數限制
     document.querySelectorAll('.bookmark-item-text').forEach(el => {
         el.style.setProperty('-webkit-line-clamp', String(lineClamp));
@@ -190,18 +204,18 @@ function clearBookmarkCache() {
  */
 function cacheRemovedBookmarks(bookmarks, reason, currentChatFileName) {
     if (!bookmarks || bookmarks.length === 0) return;
-    
+
     // 依照 originChatFileName 分組
     const groups = {};
     for (const b of bookmarks) {
-        const origin = b.originChatFileName || '(unknown)';
+        const origin = b.originChatFileName ? normalizeChatFileName(b.originChatFileName) : '(unknown)';
         if (!groups[origin]) groups[origin] = [];
         groups[origin].push({ ...b });
     }
-    
+
     const characterKey = getCurrentCharacterKey();
     const characterName = this_chid !== undefined ? characters[this_chid]?.name : (selected_group ? t('panel_group') : '');
-    
+
     for (const [origin, bms] of Object.entries(groups)) {
         addToBookmarkCache({
             id: String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8),
@@ -209,12 +223,12 @@ function cacheRemovedBookmarks(bookmarks, reason, currentChatFileName) {
             characterKey,
             characterName,
             originChatFileName: origin,
-            currentChatFileName,
+            currentChatFileName: normalizeChatFileName(currentChatFileName),
             reason,
             bookmarks: bms,
         });
     }
-    
+
     console.log(`Chat Bookmarks: 已將 ${bookmarks.length} 個書籤存入暫存箱`);
 }
 
@@ -230,26 +244,27 @@ async function restoreBookmarksFromCache(cacheId, targetChatFileName) {
         toastr.error(t('toast_cacheNotFound'), t('toast_bookmarkCache'));
         return false;
     }
-    
+
+    const normalizedTargetChatFileName = normalizeChatFileName(targetChatFileName);
     const currentChatName = getCurrentChatFileName();
-    
-    if (targetChatFileName === currentChatName) {
+
+    if (isSameChatFileName(normalizedTargetChatFileName, currentChatName)) {
         // 回溯到當前聊天
         const rawBookmarks = getCurrentChatBookmarksRaw();
         let restored = 0;
         for (const bookmark of entry.bookmarks) {
-            const b = { ...bookmark, originChatFileName: targetChatFileName };
-            if (!rawBookmarks.some(existing => existing.messageId === b.messageId && existing.originChatFileName === targetChatFileName)) {
+            const b = { ...bookmark, originChatFileName: normalizedTargetChatFileName };
+            if (!rawBookmarks.some(existing => existing.messageId === b.messageId && isSameChatFileName(existing.originChatFileName, normalizedTargetChatFileName))) {
                 rawBookmarks.push(b);
                 restored++;
             }
         }
         await saveChatConditional();
         updateAllBookmarkIcons();
-        toastr.success(t('toast_cacheRestored', restored, targetChatFileName), t('toast_bookmarkCache'));
+        toastr.success(t('toast_cacheRestored', restored, normalizedTargetChatFileName), t('toast_bookmarkCache'));
     } else {
         // 回溯到其他聊天
-        const chatData = await fetchChatData(targetChatFileName);
+        const chatData = await fetchChatData(normalizedTargetChatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) {
             toastr.error(t('toast_cacheRestoreFailed'), t('toast_bookmarkCache'));
             return false;
@@ -258,22 +273,22 @@ async function restoreBookmarksFromCache(cacheId, targetChatFileName) {
         const bookmarks = metadata.chat_bookmarks || [];
         let restored = 0;
         for (const bookmark of entry.bookmarks) {
-            const b = { ...bookmark, originChatFileName: targetChatFileName };
-            if (!bookmarks.some(existing => existing.messageId === b.messageId && existing.originChatFileName === targetChatFileName)) {
+            const b = { ...bookmark, originChatFileName: normalizedTargetChatFileName };
+            if (!bookmarks.some(existing => existing.messageId === b.messageId && isSameChatFileName(existing.originChatFileName, normalizedTargetChatFileName))) {
                 bookmarks.push(b);
                 restored++;
             }
         }
         metadata.chat_bookmarks = bookmarks;
         chatData[0].chat_metadata = metadata;
-        const success = await saveChatData(targetChatFileName, chatData);
+        const success = await saveChatData(normalizedTargetChatFileName, chatData);
         if (!success) {
             toastr.error(t('toast_cacheRestoreFailed'), t('toast_bookmarkCache'));
             return false;
         }
-        toastr.success(t('toast_cacheRestored', restored, targetChatFileName), t('toast_bookmarkCache'));
+        toastr.success(t('toast_cacheRestored', restored, normalizedTargetChatFileName), t('toast_bookmarkCache'));
     }
-    
+
     // 回溯成功後從暫存中移除
     removeFromBookmarkCache(cacheId);
     return true;
@@ -288,7 +303,7 @@ async function restoreBookmarksFromCache(cacheId, targetChatFileName) {
  * @returns {string} 快照鍵值
  */
 function getSnapshotKey(characterKey, chatFileName) {
-    return `${characterKey}::${chatFileName}`;
+    return `${characterKey}::${normalizeChatFileName(chatFileName)}`;
 }
 
 /**
@@ -300,17 +315,17 @@ function getSnapshotKey(characterKey, chatFileName) {
  */
 function saveBookmarkSnapshot(characterKey, characterName, chatFileName, bookmarks) {
     if (!bookmarks || bookmarks.length === 0) return;
-    
+
     const snapshots = getSetting('bookmarkSnapshots') || {};
     const key = getSnapshotKey(characterKey, chatFileName);
     snapshots[key] = {
         characterKey,
         characterName,
-        chatFileName,
+        chatFileName: normalizeChatFileName(chatFileName),
         bookmarks: bookmarks.map(b => ({ ...b })),
         timestamp: Date.now(),
     };
-    
+
     // 限制快照數量，移除最舊的
     const entries = Object.entries(snapshots);
     if (entries.length > MAX_BOOKMARK_SNAPSHOTS) {
@@ -320,7 +335,7 @@ function saveBookmarkSnapshot(characterKey, characterName, chatFileName, bookmar
             delete snapshots[k];
         }
     }
-    
+
     setSetting('bookmarkSnapshots', snapshots);
 }
 
@@ -354,7 +369,7 @@ function updateCurrentChatSnapshot() {
     const characterKey = getCurrentCharacterKey();
     const characterName = this_chid !== undefined ? characters[this_chid]?.name : '';
     const bookmarks = chat_metadata?.chat_bookmarks || [];
-    
+
     if (chatFileName && characterKey) {
         if (bookmarks.length > 0) {
             saveBookmarkSnapshot(characterKey, characterName, chatFileName, bookmarks);
@@ -372,14 +387,15 @@ function updateCurrentChatSnapshot() {
  */
 async function chatFileExists(chatFileName) {
     if (!chatFileName) return false;
-    
+    const normalizedChatFileName = normalizeChatFileName(chatFileName);
+
     try {
         if (selected_group) {
             const group = groups.find(g => g.id === selected_group);
-            return group?.chats?.includes(chatFileName) || group?.chat_id === chatFileName || false;
+            return group?.chats?.some(chat => isSameChatFileName(chat, normalizedChatFileName)) || isSameChatFileName(group?.chat_id, normalizedChatFileName) || false;
         } else if (this_chid !== undefined) {
             const chats = await getCharacterChats();
-            return chats.some(c => c.file_name.replace('.jsonl', '') === chatFileName);
+            return chats.some(c => isSameChatFileName(c.file_name, normalizedChatFileName));
         }
     } catch (error) {
         console.error('Chat Bookmarks: 檢查聊天是否存在時發生錯誤:', error);
@@ -395,9 +411,9 @@ async function chatFileExists(chatFileName) {
 function getCurrentChatFileName() {
     if (selected_group) {
         const group = groups.find(g => g.id === selected_group);
-        return group?.chat_id || '';
+        return normalizeChatFileName(group?.chat_id);
     }
-    return this_chid !== undefined ? characters[this_chid]?.chat || '' : '';
+    return this_chid !== undefined ? normalizeChatFileName(characters[this_chid]?.chat) : '';
 }
 
 /**
@@ -414,14 +430,17 @@ function getCurrentCharacterKey() {
  */
 function getSelectedChatsForCurrentCharacter() {
     const key = getCurrentCharacterKey();
-    return key ? (getSetting('selectedChatsByCharacter')[key] || []) : [];
+    if (!key) return [];
+
+    const chats = getSetting('selectedChatsByCharacter')[key] || [];
+    return [...new Set(chats.map(normalizeChatFileName).filter(Boolean))];
 }
 
 function setSelectedChatsForCurrentCharacter(chats) {
     const key = getCurrentCharacterKey();
     if (!key) return;
     const allSelected = getSetting('selectedChatsByCharacter') || {};
-    allSelected[key] = chats;
+    allSelected[key] = [...new Set((chats || []).map(normalizeChatFileName).filter(Boolean))];
     setSetting('selectedChatsByCharacter', allSelected);
 }
 
@@ -430,22 +449,23 @@ function setSelectedChatsForCurrentCharacter(chats) {
  */
 async function fetchChatData(chatFileName) {
     if (this_chid === undefined && !selected_group) return null;
-    
+    const normalizedChatFileName = normalizeChatFileName(chatFileName);
+
     try {
         const options = {
             method: 'POST',
             headers: getRequestHeaders(),
         };
-        
+
         if (selected_group) {
-            options.body = JSON.stringify({ id: chatFileName });
+            options.body = JSON.stringify({ id: normalizedChatFileName });
             const response = await fetch('/api/chats/group/get', options);
             return response.ok ? await response.json() : null;
         } else {
             const character = characters[this_chid];
             options.body = JSON.stringify({
                 ch_name: character.name,
-                file_name: chatFileName.replace('.jsonl', ''),
+                file_name: normalizedChatFileName,
                 avatar_url: character.avatar
             });
             const response = await fetch('/api/chats/get', options);
@@ -461,21 +481,22 @@ async function fetchChatData(chatFileName) {
  * 統一的聊天資料儲存 API
  */
 async function saveChatData(chatFileName, chatData) {
+    const normalizedChatFileName = normalizeChatFileName(chatFileName);
     try {
         const options = {
             method: 'POST',
             headers: getRequestHeaders(),
         };
-        
+
         if (selected_group) {
-            options.body = JSON.stringify({ id: chatFileName, chat: chatData });
+            options.body = JSON.stringify({ id: normalizedChatFileName, chat: chatData });
             const response = await fetch('/api/chats/group/save', options);
             return response.ok;
         } else {
             const character = characters[this_chid];
             options.body = JSON.stringify({
                 ch_name: character.name,
-                file_name: chatFileName.replace('.jsonl', ''),
+                file_name: normalizedChatFileName,
                 chat: chatData,
                 avatar_url: character.avatar,
             });
@@ -493,7 +514,7 @@ async function saveChatData(chatFileName, chatData) {
 /**
  * 取得當前聊天的書籤
  * 只返回明確屬於當前聊天的書籤（originChatFileName 與當前聊天檔案名稱相同）
- * 
+ *
  * 注意：此函式假設 cleanupInheritedBookmarks() 已在聊天載入時執行，
  * 因此所有有效書籤都應該已經有正確的 originChatFileName。
  * 對於分支聊天，只會返回在該分支中創建的書籤。
@@ -503,23 +524,23 @@ function getCurrentChatBookmarks() {
     if (!chat_metadata.chat_bookmarks) {
         chat_metadata.chat_bookmarks = [];
     }
-    
+
     const currentChatFileName = getCurrentChatFileName();
     if (!currentChatFileName) return [];
-    
+
     // 過濾出屬於當前聊天的書籤
     // 書籤有效條件：
     // 1. 對於有 main_chat 的分支聊天：必須 originChatFileName === currentChatFileName
     // 2. 對於主聊天：書籤沒有 originChatFileName（舊版書籤，向下相容）或 originChatFileName === currentChatFileName
     if (chat_metadata.main_chat) {
         // 分支聊天：嚴格匹配
-        return chat_metadata.chat_bookmarks.filter(bookmark => 
-            bookmark.originChatFileName === currentChatFileName
+        return chat_metadata.chat_bookmarks.filter(bookmark =>
+            isSameChatFileName(bookmark.originChatFileName, currentChatFileName)
         );
     } else {
         // 主聊天：允許舊版書籤
-        return chat_metadata.chat_bookmarks.filter(bookmark => 
-            !bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName
+        return chat_metadata.chat_bookmarks.filter(bookmark =>
+            !bookmark.originChatFileName || isSameChatFileName(bookmark.originChatFileName, currentChatFileName)
         );
     }
 }
@@ -536,7 +557,7 @@ function getCurrentChatBookmarksRaw() {
 /**
  * 清理從其他聊天繼承來的書籤
  * 當偵測到聊天是從分支創建的，會自動清理不屬於此聊天的書籤
- * 
+ *
  * 分支創建邏輯說明：
  * 當 SillyTavern 創建分支時，會複製 chat_metadata（包含 chat_bookmarks），
  * 並設置 chat_metadata.main_chat 指向原始聊天。
@@ -544,13 +565,13 @@ function getCurrentChatBookmarksRaw() {
  */
 async function cleanupInheritedBookmarks() {
     if (!chat_metadata || !chat_metadata.chat_bookmarks) return;
-    
+
     const currentChatFileName = getCurrentChatFileName();
     if (!currentChatFileName) return;
-    
+
     const rawBookmarks = chat_metadata.chat_bookmarks;
     let needsSave = false;
-    
+
     // 情況1：這是一個分支聊天（有 main_chat），需要清理所有來自父聊天的書籤
     // 分支聊天不應該繼承任何書籤，因為分支後的訊息 ID 相同但內容可能完全不同
     if (chat_metadata.main_chat) {
@@ -559,21 +580,21 @@ async function cleanupInheritedBookmarks() {
         // - 或者是沒有 originChatFileName 的舊版書籤（這些是從父聊天複製過來的）
         const bookmarksToRemove = rawBookmarks.filter(b => {
             // 如果有 originChatFileName 且是當前聊天的，保留
-            if (b.originChatFileName === currentChatFileName) return false;
+            if (isSameChatFileName(b.originChatFileName, currentChatFileName)) return false;
             // 其他情況都清理（包括沒有 originChatFileName 或 originChatFileName 不同的）
             return true;
         });
-        
+
         if (bookmarksToRemove.length > 0) {
             console.log(`Chat Bookmarks: 分支聊天偵測到 ${bookmarksToRemove.length} 個繼承的書籤，正在清理...`);
             // 清理前先存入暫存箱
             cacheRemovedBookmarks(bookmarksToRemove, 'cleanup_branch', currentChatFileName);
-            chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
-                b.originChatFileName === currentChatFileName
+            chat_metadata.chat_bookmarks = rawBookmarks.filter(b =>
+                isSameChatFileName(b.originChatFileName, currentChatFileName)
             );
             needsSave = true;
         }
-    } 
+    }
     // 情況2：這是主聊天，為舊版書籤補上 originChatFileName
     else {
         const oldBookmarks = rawBookmarks.filter(b => !b.originChatFileName);
@@ -584,22 +605,22 @@ async function cleanupInheritedBookmarks() {
             });
             needsSave = true;
         }
-        
+
         // 也清理任何不屬於當前聊天的書籤（可能是異常情況）
-        const inheritedBookmarks = rawBookmarks.filter(b => 
-            b.originChatFileName && b.originChatFileName !== currentChatFileName
+        const inheritedBookmarks = rawBookmarks.filter(b =>
+            b.originChatFileName && !isSameChatFileName(b.originChatFileName, currentChatFileName)
         );
         if (inheritedBookmarks.length > 0) {
             console.log(`Chat Bookmarks: 清理 ${inheritedBookmarks.length} 個不屬於此聊天的書籤`);
             // 清理前先存入暫存箱
             cacheRemovedBookmarks(inheritedBookmarks, 'cleanup_mismatch', currentChatFileName);
-            chat_metadata.chat_bookmarks = rawBookmarks.filter(b => 
-                !b.originChatFileName || b.originChatFileName === currentChatFileName
+            chat_metadata.chat_bookmarks = rawBookmarks.filter(b =>
+                !b.originChatFileName || isSameChatFileName(b.originChatFileName, currentChatFileName)
             );
             needsSave = true;
         }
     }
-    
+
     if (needsSave) {
         await saveChatConditional();
         console.log(`Chat Bookmarks: 書籤清理完成`);
@@ -620,7 +641,7 @@ function createBookmarkData(message, messageId, originChatFileName = null) {
         sender: message.name || (message.is_user ? 'You' : 'Character'),
         isUser: message.is_user || false,
         customName: '', // 書籤自訂名稱
-        originChatFileName: originChatFileName || getCurrentChatFileName(), // 書籤創建時的聊天檔案名稱
+        originChatFileName: normalizeChatFileName(originChatFileName || getCurrentChatFileName()), // 書籤創建時的聊天檔案名稱
     };
 }
 
@@ -629,8 +650,8 @@ function createBookmarkData(message, messageId, originChatFileName = null) {
  */
 async function updateBookmarkName(messageId, newName, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
-    
-    if (!chatFileName || chatFileName === currentChatName) {
+
+    if (!chatFileName || isSameChatFileName(chatFileName, currentChatName)) {
         // 使用過濾後的書籤來找到正確的書籤（物件引用仍然有效）
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
@@ -641,7 +662,7 @@ async function updateBookmarkName(messageId, newName, chatFileName = null) {
     } else {
         const chatData = await fetchChatData(chatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
-        
+
         const metadata = chatData[0].chat_metadata || {};
         const bookmarks = metadata.chat_bookmarks || [];
         const bookmark = bookmarks.find(b => b.messageId === messageId);
@@ -658,7 +679,7 @@ async function updateBookmarkName(messageId, newName, chatFileName = null) {
  */
 function filterBookmarksBySearch(bookmarks, query) {
     if (!query || query.trim() === '') return bookmarks;
-    
+
     const lowerQuery = query.toLowerCase().trim();
     return bookmarks.filter(b => {
         if (b.customName && b.customName.toLowerCase().includes(lowerQuery)) return true;
@@ -710,22 +731,22 @@ async function removeBookmark(messageId) {
     // 使用原始書籤陣列來移除
     const rawBookmarks = getCurrentChatBookmarksRaw();
     const currentChatFileName = getCurrentChatFileName();
-    
+
     // 找到屬於當前聊天的書籤
     // 對於分支聊天，必須嚴格匹配 originChatFileName
     // 對於主聊天，允許舊版書籤（沒有 originChatFileName）
     let index;
     if (chat_metadata.main_chat) {
         // 分支聊天：嚴格匹配
-        index = rawBookmarks.findIndex(b => 
-            b.messageId === messageId && 
-            b.originChatFileName === currentChatFileName
+        index = rawBookmarks.findIndex(b =>
+            b.messageId === messageId &&
+            isSameChatFileName(b.originChatFileName, currentChatFileName)
         );
     } else {
         // 主聊天：允許舊版書籤
-        index = rawBookmarks.findIndex(b => 
-            b.messageId === messageId && 
-            (!b.originChatFileName || b.originChatFileName === currentChatFileName)
+        index = rawBookmarks.findIndex(b =>
+            b.messageId === messageId &&
+            (!b.originChatFileName || isSameChatFileName(b.originChatFileName, currentChatFileName))
         );
     }
 
@@ -750,16 +771,16 @@ async function removeBookmark(messageId) {
 async function addBookmarkToExternalChat(chatFileName, messageId) {
     const chatData = await fetchChatData(chatFileName);
     if (!chatData) { toastr.error(t('toast_unableToLoadChat'), t('toast_bookmark')); return false; }
-    
+
     const messages = Array.isArray(chatData) ? chatData.slice(1) : [];
     if (messageId >= messages.length) { toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark')); return false; }
 
     const metadata = chatData[0].chat_metadata || {};
     const bookmarks = metadata.chat_bookmarks || [];
-    
-    if (bookmarks.some(b => b.messageId === messageId)) { 
-        toastr.info(t('toast_alreadyBookmarked'), t('toast_bookmark')); 
-        return false; 
+
+    if (bookmarks.some(b => b.messageId === messageId)) {
+        toastr.info(t('toast_alreadyBookmarked'), t('toast_bookmark'));
+        return false;
     }
 
     // 傳入 chatFileName 作為書籤的來源聊天檔案名稱
@@ -811,7 +832,7 @@ async function removeBookmarkFromChat(chatFileName, messageId) {
  */
 function sortBookmarks(bookmarks, sortOrder) {
     if (!bookmarks || bookmarks.length === 0) return bookmarks;
-    
+
     const sorted = [...bookmarks];
     switch (sortOrder) {
         case 'messageAsc':
@@ -861,12 +882,12 @@ function addCustomTag(name, color = '#ffe084', scope = 'global') {
     const tags = getCustomTags();
     const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     const newTag = { id, name, color, scope };
-    
+
     // 如果是角色專屬標籤，記錄當前角色的 key
     if (scope === 'character') {
         newTag.characterKey = getCurrentCharacterKey();
     }
-    
+
     tags.push(newTag);
     saveCustomTags(tags);
     return newTag;
@@ -895,7 +916,7 @@ function updateTagScope(tagId, newScope) {
 function getVisibleTags() {
     const tags = getCustomTags();
     const currentCharKey = getCurrentCharacterKey();
-    
+
     return tags.filter(tag => {
         if (!tag.scope || tag.scope === 'global') return true;
         if (tag.scope === 'character' && tag.characterKey === currentCharKey) return true;
@@ -924,14 +945,14 @@ async function deleteCustomTag(tagId) {
         tags.splice(index, 1);
         saveCustomTags(tags);
     }
-    
+
     const activeFilters = getSetting('activeTagFilters') || [];
     const filterIndex = activeFilters.indexOf(tagId);
     if (filterIndex > -1) {
         activeFilters.splice(filterIndex, 1);
         setSetting('activeTagFilters', activeFilters);
     }
-    
+
     // 使用原始書籤陣列來移除所有書籤上的此標籤
     const rawBookmarks = getCurrentChatBookmarksRaw();
     rawBookmarks.forEach(b => {
@@ -950,8 +971,8 @@ async function deleteCustomTag(tagId) {
  */
 async function addTagToBookmark(messageId, tagId, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
-    
-    if (!chatFileName || chatFileName === currentChatName) {
+
+    if (!chatFileName || isSameChatFileName(chatFileName, currentChatName)) {
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
         if (bookmark) {
@@ -964,7 +985,7 @@ async function addTagToBookmark(messageId, tagId, chatFileName = null) {
     } else {
         const chatData = await fetchChatData(chatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
-        
+
         const metadata = chatData[0].chat_metadata || {};
         const bookmarks = metadata.chat_bookmarks || [];
         const bookmark = bookmarks.find(b => b.messageId === messageId);
@@ -984,8 +1005,8 @@ async function addTagToBookmark(messageId, tagId, chatFileName = null) {
  */
 async function removeTagFromBookmark(messageId, tagId, chatFileName = null) {
     const currentChatName = getCurrentChatFileName();
-    
-    if (!chatFileName || chatFileName === currentChatName) {
+
+    if (!chatFileName || isSameChatFileName(chatFileName, currentChatName)) {
         const bookmarks = getCurrentChatBookmarks();
         const bookmark = bookmarks.find(b => b.messageId === messageId);
         if (bookmark && bookmark.tags) {
@@ -998,7 +1019,7 @@ async function removeTagFromBookmark(messageId, tagId, chatFileName = null) {
     } else {
         const chatData = await fetchChatData(chatFileName);
         if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return;
-        
+
         const metadata = chatData[0].chat_metadata || {};
         const bookmarks = metadata.chat_bookmarks || [];
         const bookmark = bookmarks.find(b => b.messageId === messageId);
@@ -1026,7 +1047,7 @@ function filterBookmarksByTag(bookmarks, tagFilters) {
  */
 function getBookmarkTagsHtml(bookmark, chatFileName) {
     if (!bookmark.tags || bookmark.tags.length === 0) return '';
-    
+
     const customTags = getCustomTags();
     const tagsHtml = bookmark.tags
         .map(tagId => {
@@ -1041,7 +1062,7 @@ function getBookmarkTagsHtml(bookmark, chatFileName) {
         })
         .filter(html => html)
         .join('');
-    
+
     return tagsHtml ? `<div class="bookmark-tags-container">${tagsHtml}</div>` : '';
 }
 
@@ -1060,11 +1081,12 @@ async function toggleBookmark(messageId) {
  * 取得特定聊天的書籤
  */
 async function getChatBookmarks(chatFileName) {
-    const chatData = await fetchChatData(chatFileName);
+    const normalizedChatFileName = normalizeChatFileName(chatFileName);
+    const chatData = await fetchChatData(normalizedChatFileName);
     if (!chatData || !Array.isArray(chatData) || chatData.length === 0) return [];
-    
+
     const bookmarks = chatData[0]?.chat_metadata?.chat_bookmarks || [];
-    return bookmarks.map(b => ({ ...b, chatFileName }));
+    return bookmarks.map(b => ({ ...b, chatFileName: normalizedChatFileName }));
 }
 
 // ========== UI 更新 ==========
@@ -1116,14 +1138,14 @@ function addBookmarkButtonsToAllMessages() {
 function updateAllBookmarkIcons(updateSvg = false) {
     const iconType = getSetting('bookmarkIcon');
     const icon = BOOKMARK_ICONS[iconType] || BOOKMARK_ICONS.star;
-    
+
     $('#chat .mes').each(function() {
         const mesId = parseInt($(this).attr('mesid'));
         if (!isNaN(mesId)) {
             const isBookmarked = isMessageBookmarked(mesId);
             const starIcon = $(this).find('.chat-bookmark-star');
             starIcon.toggleClass('bookmarked', isBookmarked);
-            
+
             if (updateSvg) {
                 starIcon.find('.bookmark-icon-regular').html(icon.regular);
                 starIcon.find('.bookmark-icon-solid').html(icon.solid);
@@ -1156,23 +1178,23 @@ function updatePanelIcons(dlg) {
  */
 async function loadMessagesUntilTarget(targetMessageId, maxAttempts = 50) {
     const { showMoreMessages } = await import("../../../../script.js");
-    
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const messageElement = $(`#chat .mes[mesid="${targetMessageId}"]`);
         if (messageElement.length) {
             return true;
         }
-        
+
         const showMoreButton = $('#show_more_messages');
         if (!showMoreButton.length) {
 
             return false;
         }
-        
+
         await showMoreMessages();
         await delay(100);
     }
-    
+
     return false;
 }
 
@@ -1181,7 +1203,7 @@ async function loadMessagesUntilTarget(targetMessageId, maxAttempts = 50) {
  */
 async function scrollToMessage(messageId) {
     let messageElement = $(`#chat .mes[mesid="${messageId}"]`);
-    
+
     if (!messageElement.length) {
         toastr.info(t('toast_loadingMoreMessages'), t('toast_bookmark'), { timeOut: 2000 });
         const loaded = await loadMessagesUntilTarget(messageId);
@@ -1191,12 +1213,12 @@ async function scrollToMessage(messageId) {
         }
         messageElement = $(`#chat .mes[mesid="${messageId}"]`);
     }
-    
+
     if (!messageElement.length) {
         toastr.warning(t('toast_messageNotFoundSimple'), t('toast_bookmark'));
         return;
     }
-    
+
     messageElement[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
     flashHighlight(messageElement);
 }
@@ -1211,7 +1233,7 @@ async function loadChatAndJump(chatFileName, messageId) {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: false
     });
 
-    if (chatFileName === currentChatName) {
+    if (isSameChatFileName(chatFileName, currentChatName)) {
         try {
             await scrollToMessage(messageId);
             toastr.clear(warningToast);
@@ -1254,73 +1276,73 @@ async function loadChatAndJump(chatFileName, messageId) {
  */
 function formatMessageText(text) {
     if (!text) return '';
-    
+
     const protectedBlocks = [];
     let blockIndex = 0;
-    
+
     const protect = (content) => {
         const placeholder = `\uE000${blockIndex++}\uE001`;
         protectedBlocks.push({ placeholder, content });
         return placeholder;
     };
-    
+
     let formatted = text;
-    
+
     formatted = formatted.replace(/<details[^>]*>[\s\S]*?<\/details>/gi, (match) => {
         return protect(`<div class="preview-details-wrapper">${match}</div>`);
     });
-    
+
     formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
         const escapedCode = escapeHtml(code.trim());
         return protect(`<div class="preview-code-block"><code>${escapedCode}</code></div>`);
     });
-    
+
     formatted = formatted.replace(/`([^`\n]+)`/g, (match, code) => {
         const escapedCode = escapeHtml(code);
         return protect(`<span class="preview-inline-code">${escapedCode}</span>`);
     });
-    
+
     formatted = escapeHtml(formatted);
-    
+
     formatted = formatted.replace(/\n/g, '<br>');
-    
+
     formatted = formatted.replace(/(?:^|<br>)([-*]{3,})(?=<br>|$)/g, (match, line) => {
         return protect(`<hr class="preview-hr">`);
     });
-    
+
     formatted = formatted.replace(/(?:^|(<br>))(#{1,6})\s+(.+?)(?=<br>|$)/g, (match, br, hashes, content) => {
         const level = hashes.length;
         const prefix = br || '';
         return prefix + protect(`<div class="preview-heading preview-h${level}">${content}</div>`);
     });
-    
+
     formatted = formatted.replace(/(?:^|(<br>))&gt;\s?(.+?)(?=<br>|$)/g, (match, br, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-blockquote">${content}</div>`);
     });
-    
+
     formatted = formatted.replace(/(?:^|(<br>))[-*]\s+(.+?)(?=<br>|$)/g, (match, br, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-list-item">• ${content}</div>`);
     });
-    
+
     formatted = formatted.replace(/(?:^|(<br>))(\d+)\.\s+(.+?)(?=<br>|$)/g, (match, br, num, content) => {
         const prefix = br || '';
         return prefix + protect(`<div class="preview-list-item preview-list-ordered">${num}. ${content}</div>`);
     });
-    
+
     formatted = formatted.replace(/\*\*([^*]+)\*\*/g, (match, content) => {
         return protect(`<strong>${content}</strong>`);
     });
-    
+
     formatted = formatted.replace(/__([^_]+)__/g, (match, content) => {
         return protect(`<u class="underline-text">${content}</u>`);
     });
-    
+
     formatted = formatted.replace(/\*([^*\n]+)\*/g, (match, content) => {
         return protect(`<em class="action-text">${content}</em>`);
     });
-    
+
     formatted = formatted.replace(/「([^」]+)」/g, (match, content) => {
         return protect(`<span class="dialogue-text">「${content}」</span>`);
     });
@@ -1340,17 +1362,17 @@ function formatMessageText(text) {
     formatted = formatted.replace(/"([^"]+)"/g, (match, content) => {
         return protect(`<span class="dialogue-text">"${content}"</span>`);
     });
- 
+
     formatted = formatted.replace(/&quot;([^&]+?)&quot;/g, (match, content) => {
         return protect(`<span class="dialogue-text">"${content}"</span>`);
     });
-    
+
     formatted = formatted.replace(/  /g, '&nbsp; ');
-    
+
     protectedBlocks.forEach(({ placeholder, content }) => {
         formatted = formatted.replace(placeholder, content);
     });
-    
+
     return formatted;
 }
 
@@ -1407,7 +1429,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
 
     currentPreviewState = { chatFileName, messageId, startOffset: 0, endOffset: range, chatData: null };
 
-    if (chatFileName === currentChatName) {
+    if (isSameChatFileName(chatFileName, currentChatName)) {
         previewData = getMessagePreview(messageId, 0, range);
         chatMessages = chat;
     } else {
@@ -1458,7 +1480,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
 
         let scrollRefMsgId = null;
         let scrollRefOffset = 0;
-        
+
         if (direction === 'up') {
 
             const allMsgs = messagesContainer.find('.bookmark-preview-message');
@@ -1473,7 +1495,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
                 }
             }
             currentPreviewState.startOffset += 5;
-            
+
             const newPreviewData = getMessagePreview(currentPreviewState.messageId, currentPreviewState.startOffset, currentPreviewState.endOffset, msgArray);
             messagesContainer.html(buildPreviewMessagesHtml(newPreviewData.messages));
             dlg.find('.load-more-up').toggleClass('hidden', !newPreviewData.canLoadMore.up);
@@ -1490,23 +1512,23 @@ async function showBookmarkPreview(messageId, chatFileName) {
 
             const scrollTop = containerElement.scrollTop;
             currentPreviewState.endOffset += 5;
-            
+
             const newPreviewData = getMessagePreview(currentPreviewState.messageId, currentPreviewState.startOffset, currentPreviewState.endOffset, msgArray);
             messagesContainer.html(buildPreviewMessagesHtml(newPreviewData.messages));
             dlg.find('.load-more-up').toggleClass('hidden', !newPreviewData.canLoadMore.up);
             dlg.find('.load-more-down').toggleClass('hidden', !newPreviewData.canLoadMore.down);
-            
+
             containerElement.scrollTop = scrollTop;
         }
     });
 
     await popup.show();
-    
+
     setTimeout(() => {
         const messagesContainer = dlg.find('.bookmark-preview-messages')[0];
         if (messagesContainer) messagesContainer.scrollTop = 0;
     }, 100);
-    
+
     currentPreviewState = { chatFileName: '', messageId: 0, startOffset: 0, endOffset: 0, chatData: null };
 }
 
@@ -1518,13 +1540,13 @@ async function showQuickPreview(messageId, chatFileName) {
     let message = null;
     let sender = '';
     let isUser = false;
-    
+
     const loadingToast = toastr.info(t('toast_previewLoading', messageId), t('toast_bookmark'), {
         timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, closeButton: false, progressBar: true
     });
-    
+
     try {
-        if (chatFileName === currentChatName) {
+        if (isSameChatFileName(chatFileName, currentChatName)) {
             if (messageId >= chat.length) {
                 toastr.clear(loadingToast);
                 toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark'));
@@ -1550,9 +1572,9 @@ async function showQuickPreview(messageId, chatFileName) {
             sender = message.name || (message.is_user ? 'You' : 'Character');
             isUser = message.is_user || false;
         }
-        
+
         const formattedText = formatMessageText(message.mes || '');
-    
+
         const previewContent = `
             <div class="quick-preview-container">
                 <div class="quick-preview-header">
@@ -1562,9 +1584,9 @@ async function showQuickPreview(messageId, chatFileName) {
                 <div class="quick-preview-text">${formattedText}</div>
             </div>
         `;
-        
+
         toastr.clear(loadingToast);
-        
+
         const popup = new Popup(previewContent, POPUP_TYPE.TEXT, '', { wide: true, okButton: t('btn_close') });
         await popup.show();
     } catch (error) {
@@ -1588,7 +1610,7 @@ function createBookmarkItemHtml(bookmark) {
 
     const existingTags = bookmark.tags || [];
     const availableTags = visibleTags.filter(tg => !existingTags.includes(tg.id));
-    const addTagOptionsHtml = availableTags.length > 0 
+    const addTagOptionsHtml = availableTags.length > 0
         ? availableTags.map(tg => `<div class="add-tag-option" data-tagid="${tg.id}" style="--tag-color: ${tg.color};"><span class="tag-dot"></span>${escapeHtml(tg.name)}</div>`).join('')
         : `<div class="add-tag-empty">${t('panel_tagNoAvailable')}</div>`;
 
@@ -1647,10 +1669,10 @@ function createBookmarkItemHtml(bookmark) {
 function createTabBookmarksHtml(bookmarks, chatFileName, searchQuery = '') {
 
     let filteredBookmarks = filterBookmarksBySearch(bookmarks, searchQuery);
-    
+
     const activeTagFilters = getSetting('activeTagFilters') || [];
     filteredBookmarks = filterBookmarksByTag(filteredBookmarks, activeTagFilters);
-    
+
     if (!filteredBookmarks || filteredBookmarks.length === 0) {
         let filterMessage;
         if (searchQuery && searchQuery.trim() !== '') {
@@ -1680,7 +1702,7 @@ async function loadTabContent(dlg, chatFileName, currentChatName, popup, searchQ
     contentContainer.html(`<div class="bookmark-empty"><p>${t('empty_loading')}</p></div>`);
 
     let bookmarks;
-    if (chatFileName === currentChatName) {
+    if (isSameChatFileName(chatFileName, currentChatName)) {
         bookmarks = getCurrentChatBookmarks().map(b => ({ ...b, chatFileName: currentChatName, isCurrent: true }));
     } else {
         bookmarks = await getChatBookmarks(chatFileName);
@@ -1712,7 +1734,7 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         const item = $(this).closest('.bookmark-item');
         const chatFileName = item.data('chat');
         const messageId = item.data('msgid');
-        const isCurrentChat = chatFileName === currentChatName;
+        const isCurrentChat = isSameChatFileName(chatFileName, currentChatName);
 
         if (!isCurrentChat) {
             const confirmed = await Popup.show.confirm(t('panel_confirmRemoveTitle'), t('panel_confirmRemoveMessage', chatFileName.replace('.jsonl', '')));
@@ -1722,14 +1744,14 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         const success = isCurrentChat ? (await removeBookmark(messageId), true) : await removeBookmarkFromChat(chatFileName, messageId);
         if (success) item.fadeOut(200, function() { $(this).remove(); });
     });
-    
+
     dlg.find('.bookmark-edit-name-btn').off('click').on('click', function(e) {
         e.stopPropagation();
         const wrapper = $(this).closest('.bookmark-custom-name-wrapper');
         wrapper.addClass('editing');
         wrapper.find('.bookmark-name-input').focus().select();
     });
-    
+
     dlg.find('.bookmark-confirm-name-btn').off('click').on('click', async function(e) {
         e.stopPropagation();
         const wrapper = $(this).closest('.bookmark-custom-name-wrapper');
@@ -1738,7 +1760,7 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         const newName = nameInput.val().trim();
         const chatFileName = nameDisplay.data('chat');
         const messageId = nameDisplay.data('msgid');
-        
+
         await updateBookmarkName(messageId, newName, chatFileName);
 
         if (newName) {
@@ -1746,10 +1768,10 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
         } else {
             nameDisplay.html(`<span class="custom-name-placeholder">${t('btn_customName')}</span>`);
         }
-        
+
         wrapper.removeClass('editing');
     });
-    
+
     dlg.find('.bookmark-name-input').off('keydown click').on('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -1761,47 +1783,47 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
     }).on('click', function(e) {
         e.stopPropagation();
     });
-    
+
     dlg.find('.bookmark-add-tag-btn').off('click').on('click', function(e) {
         e.stopPropagation();
         const wrapper = $(this).closest('.bookmark-add-tag-wrapper');
         const dropdown = wrapper.find('.bookmark-add-tag-dropdown');
-        
+
         dlg.find('.bookmark-add-tag-dropdown').not(dropdown).removeClass('show');
-        
+
         dropdown.toggleClass('show');
     });
-    
+
     dlg.find('.add-tag-option').off('click').on('click', async function(e) {
         e.stopPropagation();
         const tagId = $(this).data('tagid');
         const item = $(this).closest('.bookmark-item');
         const chatFileName = item.data('chat');
         const messageId = item.data('msgid');
-        
+
         await addTagToBookmark(messageId, tagId, chatFileName);
-        
+
         $(this).closest('.bookmark-add-tag-dropdown').removeClass('show');
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
     });
-    
+
     dlg.find('.tag-remove').off('click').on('click', async function(e) {
         e.stopPropagation();
         const tagSpan = $(this).closest('.bookmark-tag');
         const tagId = tagSpan.data('tagid');
         const chatFileName = tagSpan.data('chat');
         const messageId = tagSpan.data('msgid');
-        
+
         await removeTagFromBookmark(messageId, tagId, chatFileName);
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
     });
-    
+
     $(document).off('click.bookmarkTagDropdown').on('click.bookmarkTagDropdown', function() {
         dlg.find('.bookmark-add-tag-dropdown').removeClass('show');
     });
@@ -1812,7 +1834,7 @@ function bindBookmarkItemEvents(dlg, currentChatName, popup) {
  */
 async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentPopup) {
     const selectedChats = getSelectedChatsForCurrentCharacter();
-    
+
     const loadingPopup = new Popup(`<div style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> ${t('toast_checkingBookmarks')}<br><small style="color: var(--SmartThemeQuoteColor); margin-top: 8px; display: block;">${t('toast_checkingBookmarksHint')}</small></div>`, POPUP_TYPE.TEXT, '', { okButton: null });
     loadingPopup.show();
 
@@ -1827,10 +1849,11 @@ async function showAddChatTabPopup(parentDlg, allChats, currentChatName, parentP
     // 收集所有聊天及其書籤數量，以便排序
     const chatDataList = [];
     for (const chatInfo of allChats) {
-        if (chatInfo.file_name === currentChatName) continue;
-        const bookmarks = await getChatBookmarks(chatInfo.file_name);
+        const chatFileName = normalizeChatFileName(chatInfo.file_name);
+        if (isSameChatFileName(chatFileName, currentChatName)) continue;
+        const bookmarks = await getChatBookmarks(chatFileName);
         chatDataList.push({
-            file_name: chatInfo.file_name,
+            file_name: chatFileName,
             bookmarkCount: bookmarks.length
         });
     }
@@ -1909,7 +1932,7 @@ async function getCharacterChats() {
         });
         if (response.ok) {
             const data = await response.json();
-            return Object.values(data).map(chat => ({ file_name: chat.file_name }));
+            return Object.values(data).map(chat => ({ file_name: normalizeChatFileName(chat.file_name) }));
         }
     } catch (error) {
         console.error('Error fetching character chats:', error);
@@ -1957,7 +1980,7 @@ async function showBookmarksPanel() {
         </div>
     `;
     for (const chatName of openedTabs) {
-        if (chatName === currentChatName) continue;
+        if (isSameChatFileName(chatName, currentChatName)) continue;
         tabsHtml += `
             <div class="bookmark-tab" data-chat="${escapeHtml(chatName)}" title="${escapeHtml(chatName)}">
                 <i class="fa-regular fa-file"></i>
@@ -1981,7 +2004,7 @@ async function showBookmarksPanel() {
                     <button class="menu_button bookmarks-cache-btn" title="${t('btn_cache')}">${CACHE_BOX_ICON}</button>
                 </div>
             </div>
-            
+
             <div class="bookmarks-quick-action" style="display: none;">
                 <div class="quick-action-title"><i class="fa-solid fa-bolt"></i> ${t('panel_quickActionTitle')}</div>
                 <div class="quick-action-row">
@@ -1997,7 +2020,7 @@ async function showBookmarksPanel() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="bookmarks-tags-panel" style="display: none;">
                 <div class="tags-panel-row">
                     <div class="tags-panel-section tags-section-add">
@@ -2056,7 +2079,7 @@ async function showBookmarksPanel() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="bookmarks-search-panel" style="display: none;">
                 <div class="search-panel-header">
                     <div class="search-panel-title"><i class="fa-solid fa-magnifying-glass"></i> ${t('panel_searchTitle')}</div>
@@ -2066,7 +2089,7 @@ async function showBookmarksPanel() {
                 </div>
                 <input type="text" class="bookmark-search-input" placeholder="${t('placeholder_search')}" maxlength="100">
             </div>
-            
+
             <div class="bookmarks-settings-panel" style="display: none;">
                 <div class="settings-panel-title"><i class="fa-solid fa-gear"></i> ${t('panel_settingsTitle')}</div>
                 <div class="settings-row">
@@ -2096,7 +2119,7 @@ async function showBookmarksPanel() {
                     <button class="menu_button bookmark-reset-defaults-btn" title="${t('panel_resetDefaults')}"><i class="fa-solid fa-rotate-left"></i> ${t('btn_reset')}</button>
                 </div>
             </div>
-            
+
             <div class="bookmarks-cache-panel" style="display: none;">
                 <div class="cache-panel-header">
                     <div class="cache-panel-title">${CACHE_BOX_ICON} ${t('panel_cacheTitle')} <span class="cache-panel-hint">${t('panel_cacheHint')}</span></div>
@@ -2107,7 +2130,7 @@ async function showBookmarksPanel() {
                 </div>
                 <div class="cache-entries-list"></div>
             </div>
-            
+
             <div class="bookmarks-tabs-container">
                 <div class="bookmarks-tabs">
                     <div class="bookmarks-tabs-scrollable">
@@ -2140,14 +2163,14 @@ async function showBookmarksPanel() {
     const updateTagsPanel = async () => {
         const tags = getCustomTags();
         const currentFilters = getSetting('activeTagFilters') || [];
-        
+
         const tagSelectOptionsHtml = tags.length > 0
             ? tags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${escapeHtml(tag.name)}</option>`).join('')
             : `<option value="" disabled>${t('panel_tagNone')}</option>`;
         const selectEl = dlg.find('.tag-manage-select');
         const currentSelectedId = selectEl.val();
         selectEl.html(tagSelectOptionsHtml);
-        
+
         if (currentSelectedId && tags.some(t => t.id === currentSelectedId)) {
             selectEl.val(currentSelectedId);
         }
@@ -2157,7 +2180,7 @@ async function showBookmarksPanel() {
             dlg.find('.tag-manage-color').val(selectedTag.color);
             dlg.find('.tag-manage-scope-select').val(selectedTag.scope || 'global');
         }
-        
+
         const visibleTagsForUpdate = getVisibleTags();
         const tagFilterHtml = visibleTagsForUpdate.map(tag => {
             const scopeLabel = getTagScopeLabel(tag);
@@ -2182,7 +2205,7 @@ async function showBookmarksPanel() {
         const searchPanelVisible = dlg.find('.bookmarks-search-panel').is(':visible');
         const settingsPanelVisible = dlg.find('.bookmarks-settings-panel').is(':visible');
         const cachePanelVisible = dlg.find('.bookmarks-cache-panel').is(':visible');
-        
+
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', quickActionVisible);
         dlg.find('.bookmarks-tags-btn').toggleClass('active', tagsPanelVisible);
         dlg.find('.bookmarks-search-btn').toggleClass('active', searchPanelVisible);
@@ -2193,13 +2216,13 @@ async function showBookmarksPanel() {
     dlg.find('.bookmarks-quick-action-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-quick-action');
         const isOpening = !panel.is(':visible');
-        
+
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
         dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
-        
+
         dlg.find('.bookmarks-quick-action-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-tags-btn').removeClass('active');
         dlg.find('.bookmarks-search-btn').removeClass('active');
@@ -2210,13 +2233,13 @@ async function showBookmarksPanel() {
     dlg.find('.bookmarks-tags-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-tags-panel');
         const isOpening = !panel.is(':visible');
-        
+
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
         dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
-        
+
         dlg.find('.bookmarks-tags-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-search-btn').removeClass('active');
@@ -2227,19 +2250,19 @@ async function showBookmarksPanel() {
     dlg.find('.bookmarks-search-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-search-panel');
         const isOpening = !panel.is(':visible');
-        
+
         dlg.find('.bookmarks-settings-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
-        
+
         dlg.find('.bookmarks-search-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
         dlg.find('.bookmarks-settings-btn').removeClass('active');
         dlg.find('.bookmarks-cache-btn').removeClass('active');
-        
+
         if (isOpening) {
             setTimeout(() => dlg.find('.bookmark-search-input').focus(), 250);
         }
@@ -2248,13 +2271,13 @@ async function showBookmarksPanel() {
     dlg.find('.bookmarks-settings-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-settings-panel');
         const isOpening = !panel.is(':visible');
-        
+
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
         dlg.find('.bookmarks-cache-panel').slideUp(200);
         panel.slideToggle(200, updateHeaderButtonsActiveState);
-        
+
         dlg.find('.bookmarks-settings-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
@@ -2266,12 +2289,12 @@ async function showBookmarksPanel() {
     const renderCacheEntries = () => {
         const cache = getBookmarkCache();
         const container = dlg.find('.cache-entries-list');
-        
+
         if (cache.length === 0) {
             container.html(`<div class="cache-empty">${t('cache_empty')}</div>`);
             return;
         }
-        
+
         const entriesHtml = cache.map(entry => {
             const date = new Date(entry.timestamp);
             const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -2279,7 +2302,7 @@ async function showBookmarksPanel() {
                 : entry.reason === 'chat_deleted' ? t('cache_reasonDeleted')
                 : entry.reason === 'data_lost' ? t('cache_reasonDataLost')
                 : t('cache_reasonMismatch');
-            
+
             return `
                 <div class="cache-entry" data-cacheid="${escapeHtml(entry.id)}">
                     <div class="cache-entry-info">
@@ -2302,22 +2325,22 @@ async function showBookmarksPanel() {
                 </div>
             `;
         }).join('');
-        
+
         container.html(entriesHtml);
     };
 
     dlg.find('.bookmarks-cache-btn').on('click', () => {
         const panel = dlg.find('.bookmarks-cache-panel');
         const isOpening = !panel.is(':visible');
-        
+
         dlg.find('.bookmarks-tags-panel').slideUp(200);
         dlg.find('.bookmarks-quick-action').slideUp(200);
         dlg.find('.bookmarks-search-panel').slideUp(200);
         dlg.find('.bookmarks-settings-panel').slideUp(200);
-        
+
         if (isOpening) renderCacheEntries();
         panel.slideToggle(200, updateHeaderButtonsActiveState);
-        
+
         dlg.find('.bookmarks-cache-btn').toggleClass('active', isOpening);
         dlg.find('.bookmarks-quick-action-btn').removeClass('active');
         dlg.find('.bookmarks-tags-btn').removeClass('active');
@@ -2341,27 +2364,27 @@ async function showBookmarksPanel() {
         const cache = getBookmarkCache();
         const entry = cache.find(e => e.id === cacheId);
         if (!entry) return;
-        
+
         // 檢查角色是否匹配
         const currentKey = getCurrentCharacterKey();
         if (currentKey !== entry.characterKey) {
             toastr.warning(t('toast_cacheWrongCharacter', entry.characterName), t('toast_bookmarkCache'));
             return;
         }
-        
+
         // 取得可用聊天列表
         const allChats = await getCharacterChats();
-        const chatNames = allChats.map(c => c.file_name.replace('.jsonl', ''));
-        
+        const chatNames = allChats.map(c => normalizeChatFileName(c.file_name));
+
         if (chatNames.length === 0) {
             toastr.error(t('toast_cacheNoChats'), t('toast_bookmarkCache'));
             return;
         }
-        
-        const options = chatNames.map(name => 
-            `<option value="${escapeHtml(name)}" ${name === entry.originChatFileName ? 'selected' : ''}>${escapeHtml(name)}</option>`
+
+        const options = chatNames.map(name =>
+            `<option value="${escapeHtml(name)}" ${isSameChatFileName(name, entry.originChatFileName) ? 'selected' : ''}>${escapeHtml(name)}</option>`
         ).join('');
-        
+
         const restoreHtml = `
             <div style="margin-bottom: 12px;">
                 ${t('cache_restorePrompt', entry.bookmarks.length, entry.originChatFileName)}
@@ -2371,20 +2394,20 @@ async function showBookmarksPanel() {
                 ${options}
             </select>
         `;
-        
+
         const restorePopup = new Popup(restoreHtml, POPUP_TYPE.CONFIRM, '', { okButton: t('btn_cacheRestore'), cancelButton: t('btn_close') });
         const result = await restorePopup.show();
-        
+
         if (!result) return;
-        
+
         const targetChat = $(restorePopup.dlg).find('#cache-restore-target').val();
         if (!targetChat) return;
-        
-        if (!chatNames.includes(targetChat)) {
+
+        if (!chatNames.some(name => isSameChatFileName(name, targetChat))) {
             toastr.error(t('toast_cacheChatNotFound'), t('toast_bookmarkCache'));
             return;
         }
-        
+
         const success = await restoreBookmarksFromCache(cacheId, targetChat);
         if (success) {
             renderCacheEntries();
@@ -2403,45 +2426,45 @@ async function showBookmarksPanel() {
         renderCacheEntries();
         toastr.info(t('toast_cacheDeleted'), t('toast_bookmarkCache'));
     });
-    
+
     dlg.find('.tag-add-btn').on('click', async function() {
         const nameInput = dlg.find('.tag-name-input');
         const colorInput = dlg.find('.tag-new-color');
         const scopeSelect = dlg.find('.tag-scope-select');
         const name = nameInput.val().trim();
         const scope = scopeSelect.val() || 'global';
-        
+
         if (!name) {
             toastr.warning(t('toast_tagEnterName'), t('toast_tag'));
             return;
         }
-        
+
         addCustomTag(name, colorInput.val(), scope);
         nameInput.val('');
         await updateTagsPanel();
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
-        
+
         toastr.success(t('toast_tagAdded', name), t('toast_tag'));
     });
-    
+
     dlg.on('change', '.tag-manage-scope-select', async function() {
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
         const newScope = $(this).val();
-        
+
         if (!tagId) return;
-        
+
         updateTagScope(tagId, newScope);
         await updateTagsPanel();
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
     });
-    
+
     let searchTimeout = null;
     dlg.find('.bookmark-search-input').on('input', function() {
         const query = $(this).val();
@@ -2451,94 +2474,94 @@ async function showBookmarksPanel() {
             await loadTabContent(dlg, activeChat, currentChatName, popup, query);
         }, 300);
     });
-    
+
     dlg.find('.bookmark-search-clear-btn').on('click', async function() {
         dlg.find('.bookmark-search-input').val('');
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup, '');
     });
-    
+
     dlg.find('.tag-delete-btn').on('click', async function(e) {
         e.stopPropagation();
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
-        
+
         if (!tagId) {
             toastr.warning(t('toast_tagSelectFirst'), t('toast_tag'));
             return;
         }
-        
+
         const tags = getCustomTags();
         const tag = tags.find(tg => tg.id === tagId);
         if (!tag) return;
-        
+
         const confirmed = await Popup.show.confirm(t('panel_confirmDeleteTagTitle'), t('panel_confirmDeleteTagMessage', tag.name));
         if (!confirmed) return;
-        
+
         await deleteCustomTag(tagId);
         await updateTagsPanel();
-        
+
         // 退出編輯模式（如果在編輯中）
         exitTagEditMode();
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
-        
+
         toastr.info(t('toast_tagDeleted', tag.name), t('toast_tag'));
     });
-    
+
     // 標籤編輯功能
     let isTagEditMode = false;
-    
+
     const exitTagEditMode = () => {
         isTagEditMode = false;
         const editBtn = dlg.find('.tag-edit-btn');
         const selectEl = dlg.find('.tag-manage-select');
         const editArea = dlg.find('.tag-edit-area');
-        
+
         editBtn.removeClass('editing');
         editBtn.find('.tag-edit-icon-pen').show();
         editBtn.find('.tag-edit-icon-check').hide();
         selectEl.show();
         editArea.hide();
     };
-    
+
     const enterTagEditMode = () => {
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
-        
+
         if (!tagId) {
             toastr.warning(t('toast_tagSelectFirst'), t('toast_tag'));
             return;
         }
-        
+
         const tags = getCustomTags();
         const tag = tags.find(t => t.id === tagId);
         if (!tag) return;
-        
+
         isTagEditMode = true;
         const editBtn = dlg.find('.tag-edit-btn');
         const editArea = dlg.find('.tag-edit-area');
         const nameInput = dlg.find('.tag-edit-name-input');
-        
+
         // 設置當前標籤名稱
         nameInput.val(tag.name);
-        
+
         // 更新顏色和範圍選擇器的值
         dlg.find('.tag-manage-color').val(tag.color);
         dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
-        
+
         editBtn.addClass('editing');
         editBtn.find('.tag-edit-icon-pen').hide();
         editBtn.find('.tag-edit-icon-check').show();
         selectEl.hide();
         editArea.css('display', 'flex');
-        
+
         // 聚焦到名稱輸入框
         setTimeout(() => nameInput.focus().select(), 100);
     };
-    
+
     const saveTagEdit = async () => {
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
@@ -2546,41 +2569,41 @@ async function showBookmarksPanel() {
         const newName = nameInput.val().trim();
         const newColor = dlg.find('.tag-manage-color').val();
         const newScope = dlg.find('.tag-manage-scope-select').val();
-        
+
         if (!tagId) return;
-        
+
         const tags = getCustomTags();
         const tag = tags.find(t => t.id === tagId);
         if (!tag) return;
-        
+
         // 更新標籤屬性
         if (newName && newName !== tag.name) {
             tag.name = newName;
         }
         tag.color = newColor;
         tag.scope = newScope;
-        
+
         if (newScope === 'character') {
             tag.characterKey = getCurrentCharacterKey();
         } else {
             delete tag.characterKey;
         }
-        
+
         saveCustomTags(tags);
-        
+
         exitTagEditMode();
         await updateTagsPanel();
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         const searchQuery = dlg.find('.bookmark-search-input').val() || '';
         await loadTabContent(dlg, activeChat, currentChatName, popup, searchQuery);
-        
+
         toastr.success(t('toast_tagUpdated', tag.name), t('toast_tag'));
     };
-    
+
     dlg.find('.tag-edit-btn').on('click', async function(e) {
         e.stopPropagation();
-        
+
         if (isTagEditMode) {
             // 儲存變更並退出編輯模式
             await saveTagEdit();
@@ -2589,7 +2612,7 @@ async function showBookmarksPanel() {
             enterTagEditMode();
         }
     });
-    
+
     // 當選擇的標籤改變時，如果在編輯模式，更新輸入框的值
     dlg.on('change', '.tag-manage-select', function() {
         const tagId = $(this).val();
@@ -2598,14 +2621,14 @@ async function showBookmarksPanel() {
         if (tag) {
             dlg.find('.tag-manage-color').val(tag.color);
             dlg.find('.tag-manage-scope-select').val(tag.scope || 'global');
-            
+
             // 如果在編輯模式，更新名稱輸入框
             if (isTagEditMode) {
                 dlg.find('.tag-edit-name-input').val(tag.name);
             }
         }
     });
-    
+
     // 編輯模式下按 Enter 儲存
     dlg.on('keydown', '.tag-edit-name-input', async function(e) {
         if (e.key === 'Enter') {
@@ -2616,14 +2639,14 @@ async function showBookmarksPanel() {
             exitTagEditMode();
         }
     });
-    
+
     dlg.on('change', '.tag-manage-color', async function() {
         const selectEl = dlg.find('.tag-manage-select');
         const tagId = selectEl.val();
         const newColor = $(this).val();
-        
+
         if (!tagId) return;
-        
+
         // 如果不在編輯模式，直接儲存顏色變更（向後相容）
         if (!isTagEditMode) {
             const tags = getCustomTags();
@@ -2631,7 +2654,7 @@ async function showBookmarksPanel() {
             if (tag) {
                 tag.color = newColor;
                 saveCustomTags(tags);
-                
+
                 await updateTagsPanel();
                 const activeChat = dlg.find('.bookmark-tab.active').data('chat');
                 await loadTabContent(dlg, activeChat, currentChatName, popup);
@@ -2639,11 +2662,11 @@ async function showBookmarksPanel() {
         }
         // 如果在編輯模式，顏色會在點擊勾勾時一併儲存
     });
-    
+
     dlg.on('click', '.tag-filter-item', async function() {
         const tagId = $(this).data('tagid');
         let currentFilters = getSetting('activeTagFilters') || [];
-        
+
         if (tagId === '' || $(this).hasClass('tag-filter-all')) {
             currentFilters = [];
         } else {
@@ -2654,9 +2677,9 @@ async function showBookmarksPanel() {
                 currentFilters.push(tagId);
             }
         }
-        
+
         setSetting('activeTagFilters', currentFilters);
-        
+
         dlg.find('.tag-filter-item').removeClass('active');
         if (currentFilters.length === 0) {
             dlg.find('.tag-filter-all').addClass('active');
@@ -2665,11 +2688,11 @@ async function showBookmarksPanel() {
                 dlg.find(`.tag-filter-item[data-tagid="${id}"]`).addClass('active');
             });
         }
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
     });
-    
+
     dlg.find('#bookmark-accent-color').on('change input', function() {
         setSetting('accentColor', $(this).val());
         applyCssVariables();
@@ -2683,7 +2706,7 @@ async function showBookmarksPanel() {
         const value = Math.max(1, Math.min(100, parseInt($(this).val()) || 15));
         setSetting('previewLineClamp', value);
         applyCssVariables();
-        
+
         dlg.find('.bookmark-item-text').each(function() {
             $(this).css({
                 '-webkit-line-clamp': value,
@@ -2694,7 +2717,7 @@ async function showBookmarksPanel() {
 
     dlg.find('#bookmark-icon-type').on('change', function() {
         setSetting('bookmarkIcon', $(this).val());
-        updateAllBookmarkIcons(true); 
+        updateAllBookmarkIcons(true);
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
     });
@@ -2704,39 +2727,39 @@ async function showBookmarksPanel() {
         const confirmed = await Popup.show.confirm(t('panel_confirmResetTitle'), t('panel_confirmResetMessage'));
         if (!confirmed) return;
 
- 
+
         const selectedChatsByCharacter = getSetting('selectedChatsByCharacter') || {};
-        
- 
-        extension_settings[extensionName] = { 
+
+
+        extension_settings[extensionName] = {
             ...defaultSettings,
-            selectedChatsByCharacter 
+            selectedChatsByCharacter
         };
         saveSettingsDebounced();
         applyCssVariables();
-        
+
         dlg.find('#bookmark-accent-color').val(defaultSettings.accentColor);
         dlg.find('#bookmark-preview-range').val(defaultSettings.previewRange);
         dlg.find('#bookmark-preview-line-clamp').val(defaultSettings.previewLineClamp);
         dlg.find('#bookmark-icon-type').val(defaultSettings.bookmarkIcon);
-        
+
         dlg.find('.bookmark-sort-btn').removeClass('active');
         dlg.find(`.bookmark-sort-btn[data-sort="${defaultSettings.sortOrder}"]`).addClass('active');
-        
+
         updateAllBookmarkIcons(true);
         updatePanelIcons(dlg);
         updateExtensionMenuIcon();
-        
+
         dlg.find('.bookmark-item-text').each(function() {
             $(this).css({
                 '-webkit-line-clamp': defaultSettings.previewLineClamp,
                 'line-clamp': defaultSettings.previewLineClamp
             });
         });
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
-        
+
         toastr.success(t('toast_settingsReset'), t('toast_bookmark'));
     });
 
@@ -2744,10 +2767,10 @@ async function showBookmarksPanel() {
     dlg.find('.bookmark-sort-btn').on('click', async function() {
         const sortOrder = $(this).data('sort');
         setSetting('sortOrder', sortOrder);
-        
+
         dlg.find('.bookmark-sort-btn').removeClass('active');
         $(this).addClass('active');
-        
+
         const activeChat = dlg.find('.bookmark-tab.active').data('chat');
         await loadTabContent(dlg, activeChat, currentChatName, popup);
     });
@@ -2768,14 +2791,14 @@ async function showBookmarksPanel() {
         await loadChatAndJump(dlg.find('.bookmark-tab.active').data('chat'), msgId);
     });
 
- 
+
     dlg.find('.bookmark-quick-bookmark-btn').on('click', async function() {
         const msgId = parseInt(dlg.find('#bookmark-quick-msgid').val());
         if (isNaN(msgId) || msgId < 0) { toastr.warning(t('toast_enterValidNumber'), t('toast_bookmark')); return; }
 
         const chatFileName = dlg.find('.bookmark-tab.active').data('chat');
-        
-        if (chatFileName === currentChatName) {
+
+        if (isSameChatFileName(chatFileName, currentChatName)) {
             if (msgId >= chat.length) { toastr.warning(t('toast_messageOutOfRange'), t('toast_bookmark')); return; }
             await addBookmark(msgId);
         } else {
@@ -2784,7 +2807,7 @@ async function showBookmarksPanel() {
         await loadTabContent(dlg, chatFileName, currentChatName, popup);
     });
 
- 
+
     dlg.find('.bookmarks-tabs').on('click', '.bookmark-tab', async function(e) {
         if ($(e.target).closest('.tab-close').length) return;
         dlg.find('.bookmark-tab').removeClass('active');
@@ -2845,12 +2868,12 @@ async function onChatChanged() {
     const currentChatFileName = getCurrentChatFileName();
     const currentCharacterKey = getCurrentCharacterKey();
     const currentCharacterName = this_chid !== undefined ? characters[this_chid]?.name : '';
-    
+
     // === 偵測前一個聊天是否被刪除 ===
     // 僅在同一個角色下檢查（切換角色時不檢查）
     if (previousChatState.chatFileName && previousChatState.bookmarks.length > 0
         && previousChatState.characterKey === currentCharacterKey
-        && previousChatState.chatFileName !== currentChatFileName) {
+        && !isSameChatFileName(previousChatState.chatFileName, currentChatFileName)) {
         try {
             const prevStillExists = await chatFileExists(previousChatState.chatFileName);
             if (!prevStillExists) {
@@ -2862,22 +2885,22 @@ async function onChatChanged() {
             console.error('Chat Bookmarks: 檢查前一個聊天是否存在時發生錯誤:', error);
         }
     }
-    
+
     // === 偵測當前聊天的書籤是否因資料遺失而消失 ===
     if (currentChatFileName && currentCharacterKey) {
         const currentBookmarks = chat_metadata?.chat_bookmarks || [];
         const snapshot = getBookmarkSnapshot(currentCharacterKey, currentChatFileName);
-        
+
         if (snapshot && snapshot.bookmarks.length > 0 && currentBookmarks.length === 0) {
             console.log(`Chat Bookmarks: 偵測到「${currentChatFileName}」的書籤資料遺失（快照有 ${snapshot.bookmarks.length} 個，目前為 0），暫存書籤`);
             cacheRemovedBookmarks(snapshot.bookmarks, 'data_lost', currentChatFileName);
             removeBookmarkSnapshot(currentCharacterKey, currentChatFileName);
         }
     }
-    
+
     // === 執行原有的清理邏輯（分支清理、名稱不匹配等） ===
     await cleanupInheritedBookmarks();
-    
+
     // === 清理完成後，更新當前聊天的書籤快照 ===
     if (currentChatFileName && currentCharacterKey) {
         const bookmarksAfterCleanup = chat_metadata?.chat_bookmarks || [];
@@ -2885,7 +2908,7 @@ async function onChatChanged() {
             saveBookmarkSnapshot(currentCharacterKey, currentCharacterName, currentChatFileName, bookmarksAfterCleanup);
         }
     }
-    
+
     // === 更新 previousChatState 為當前聊天的狀態 ===
     previousChatState = {
         chatFileName: currentChatFileName,
@@ -2893,7 +2916,7 @@ async function onChatChanged() {
         characterName: currentCharacterName,
         bookmarks: (chat_metadata?.chat_bookmarks || []).map(b => ({ ...b })),
     };
-    
+
     setTimeout(addBookmarkButtonsToAllMessages, 500);
 }
 
@@ -2912,42 +2935,42 @@ function onMessageReceived(messageId) {
  */
 async function onMessageDeleted(newChatLength) {
     if (!chat_metadata || !chat_metadata.chat_bookmarks) return;
-    
+
     const currentChatFileName = getCurrentChatFileName();
     if (!currentChatFileName) return;
-    
+
     const rawBookmarks = getCurrentChatBookmarksRaw();
     const originalLength = rawBookmarks.length;
-    
+
     // 過濾出屬於當前聊天且 messageId 有效的書籤
     // messageId 必須小於新的聊天長度才是有效的
     const validBookmarks = rawBookmarks.filter(bookmark => {
         // 檢查是否屬於當前聊天
         const belongsToCurrentChat = chat_metadata.main_chat
-            ? bookmark.originChatFileName === currentChatFileName
-            : (!bookmark.originChatFileName || bookmark.originChatFileName === currentChatFileName);
-        
+            ? isSameChatFileName(bookmark.originChatFileName, currentChatFileName)
+            : (!bookmark.originChatFileName || isSameChatFileName(bookmark.originChatFileName, currentChatFileName));
+
         if (!belongsToCurrentChat) {
             // 不屬於當前聊天的書籤保留（可能是其他聊天的書籤）
             return true;
         }
-        
+
         // 屬於當前聊天的書籤，檢查 messageId 是否仍有效
         return bookmark.messageId < newChatLength;
     });
-    
+
     // 如果有書籤被移除，更新 metadata 並儲存
     if (validBookmarks.length !== originalLength) {
         chat_metadata.chat_bookmarks = validBookmarks;
         console.log(`Chat Bookmarks: 已清理 ${originalLength - validBookmarks.length} 個無效書籤`);
-        
+
         // 更新 UI
         updateAllBookmarkIcons();
-        
+
         // 儲存變更
         await saveChatConditional();
         updateCurrentChatSnapshot();
-        
+
         if (getSetting('showNotifications')) {
             toastr.info(t('toast_bookmarkAutoRemoved') || '已自動移除無效的書籤', t('toast_bookmark'));
         }
@@ -3183,7 +3206,7 @@ async function loadSettings() {
 
 jQuery(async () => {
     await loadLocale(extensionFolderPath);
-    
+
     await loadSettings();
     addExtensionMenuButton();
     addBookmarkButtonsToAllMessages();
