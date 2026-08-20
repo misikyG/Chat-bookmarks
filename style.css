@@ -257,6 +257,7 @@
 
 .bookmarks-settings-btn,
 .bookmarks-tags-btn,
+.bookmarks-regex-btn,
 .bookmarks-quick-action-btn,
 .bookmarks-search-btn,
 .bookmarks-cache-btn {
@@ -271,6 +272,7 @@
 
 .bookmarks-settings-btn.active,
 .bookmarks-tags-btn.active,
+.bookmarks-regex-btn.active,
 .bookmarks-quick-action-btn.active,
 .bookmarks-search-btn.active,
 .bookmarks-cache-btn.active {
@@ -281,6 +283,7 @@
 
 .bookmarks-settings-btn.active i,
 .bookmarks-tags-btn.active i,
+.bookmarks-regex-btn.active i,
 .bookmarks-quick-action-btn.active svg,
 .bookmarks-search-btn.active i,
 .bookmarks-cache-btn.active svg {
@@ -289,6 +292,7 @@
 
 .bookmarks-settings-btn i,
 .bookmarks-tags-btn i,
+.bookmarks-regex-btn i,
 .bookmarks-quick-action-btn svg,
 .bookmarks-search-btn i,
 .bookmarks-cache-btn svg {
@@ -2297,6 +2301,143 @@
     transition: all 0.15s ease;
     padding: 0;
     flex-shrink: 0;
+}
+
+/* ===== 書籤 Regex 面板 ===== */
+.bookmarks-regex-panel {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+}
+
+.regex-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.regex-panel-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.9em;
+}
+
+.regex-panel-title i {
+    color: var(--bookmark-accent-color);
+}
+
+.regex-panel-hint {
+    margin: 8px 0;
+    color: var(--SmartThemeQuoteColor);
+    font-size: 0.8em;
+}
+
+.bookmark-regex-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 0.85em;
+}
+
+.bookmark-regex-html-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 0.85em;
+}
+
+.bookmark-regex-rules {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    gap: 8px;
+}
+
+.bookmark-regex-rule {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+}
+
+.bookmark-regex-chip {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bookmark-accent-color) 15%, var(--SmartThemeBlurTintColor));
+    color: var(--SmartThemeBodyColor);
+    cursor: pointer;
+    font-size: 0.82em;
+}
+
+.bookmark-regex-chip:hover {
+    border-color: var(--bookmark-accent-color);
+}
+
+.bookmark-regex-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-regex-delete-btn {
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0;
+    align-items: center;
+}
+
+.bookmark-regex-empty {
+    color: var(--SmartThemeQuoteColor);
+    font-size: 0.85em;
+}
+
+.bookmark-regex-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bookmark-regex-editor label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9em;
+}
+
+.bookmark-regex-editor input,
+.bookmark-regex-editor textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 6px;
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    font-size: 0.85em;
+    font-family: monospace;
+    resize: vertical;
+}
+
+.bookmark-regex-editor input:focus,
+.bookmark-regex-editor textarea:focus {
+    outline: none;
+    border-color: var(--bookmark-accent-color);
 }
 
 .bookmark-search-clear-btn:hover {

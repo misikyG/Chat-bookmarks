@@ -1,12 +1,12 @@
 {
     "extensionName": "書籤",
     "extensionDesc": "在聊天訊息上標記書籤，可以預覽和跳轉到書籤訊息，支援跨聊天視窗瀏覽同角色的所有書籤。",
-    
+
     "iconName_star": "星星",
     "iconName_heart": "愛心",
     "iconName_bookmark": "書籤",
     "iconName_flag": "旗幟",
-    
+
     "toast_bookmark": "書籤",
     "toast_bookmarkAdded": "已添加書籤",
     "toast_bookmarkRemoved": "已移除書籤",
@@ -32,16 +32,16 @@
     "toast_checkingBookmarks": "正在檢查書籤...",
     "toast_checkingBookmarksHint": "聊天視窗越多查找越慢，請稍後...",
     "toast_bookmarkAutoRemoved": "已自動移除無效的書籤",
-    
+
     "toast_tag": "標籤",
     "toast_tagEnterName": "請輸入標籤名稱",
     "toast_tagAdded": "已新增標籤「{0}」",
     "toast_tagSelectFirst": "請先選擇要刪除的標籤",
     "toast_tagDeleted": "已刪除標籤「{0}」",
     "toast_tagUpdated": "已更新標籤「{0}」",
-    
+
     "toast_settingsReset": "已恢復預設設定",
-    
+
     "toast_bookmarkCache": "書籤暫存箱",
     "toast_cacheNotFound": "找不到此暫存紀錄",
     "toast_cacheWrongCharacter": "請先切換到「{0}」再進行回溯",
@@ -51,13 +51,13 @@
     "toast_cacheRestored": "已成功回溯 {0} 個書籤至「{1}」",
     "toast_cacheClearedAll": "已清除所有暫存紀錄",
     "toast_cacheDeleted": "已刪除此暫存紀錄",
-    
+
     "toast_slashPanelOpened": "書籤面板已開啟",
     "toast_slashBookmarkAdded": "已為訊息 #{0} 添加書籤",
     "toast_slashBookmarkRemoved": "已移除訊息 #{0} 的書籤",
     "toast_slashPreviewing": "正在預覽訊息 #{0}",
     "toast_slashJumped": "已跳轉至訊息 #{0}",
-    
+
     "btn_clickToToggle": "點擊標記/取消書籤",
     "btn_jumpToMessage": "跳轉到訊息",
     "btn_removeBookmark": "移除書籤",
@@ -67,6 +67,7 @@
     "btn_addOtherChats": "新增其他聊天的書籤",
     "btn_quickAction": "訊息快速操作",
     "btn_tagManagement": "標籤管理",
+    "btn_regex": "Regex",
     "btn_search": "搜索",
     "btn_settings": "設定",
     "btn_close": "關閉",
@@ -78,22 +79,25 @@
     "btn_editName": "編輯名稱",
     "btn_confirm": "確認",
     "btn_clearSearch": "清除搜索",
-    
+    "btn_removeRegex": "移除此規則",
+    "btn_editRegex": "編輯此規則",
+    "btn_save": "儲存",
+
     "btn_cache": "書籤暫存箱",
     "btn_cacheClearAll": "清除所有暫存",
     "btn_cacheRestore": "回溯",
     "btn_cacheDelete": "刪除此暫存",
-    
+
     "panel_bookmarksOf": "{0} 的書籤",
     "panel_group": "群組",
     "panel_currentChat": "目前聊天",
     "panel_messagePreview": "訊息預覽",
     "panel_jumpToMessage": "跳轉到此訊息",
-    
+
     "panel_quickActionTitle": "訊息快速操作",
     "panel_messageNumber": "訊息編號",
     "panel_enterMessageNumber": "輸入訊息編號",
-    
+
     "panel_tagsTitle": "標籤管理",
     "panel_tagAdd": "標籤新增",
     "panel_tagManage": "標籤管理",
@@ -111,14 +115,27 @@
     "panel_tagScope": "標籤範圍",
     "panel_tagChangeScope": "更改標籤範圍",
     "panel_tagScopeHint": "「全域」=通用標籤；「角色」=僅此角色標籤",
-    
+
     "panel_searchTitle": "搜索書籤",
     "placeholder_search": "輸入關鍵字或書籤名稱...",
+    "panel_regexTitle": "書籤 Regex",
+    "panel_regexHint": "規則會依序套用至書籤顯示內容，不會修改聊天檔案。",
+    "panel_regexAdd": "新增 Regex 規則",
+    "panel_regexRenderHtml": "將處理結果顯示為 HTML",
+    "panel_regexName": "規則名稱（選填）",
+    "panel_regexPattern": "尋找 Regex",
+    "panel_regexReplacement": "取代內容",
+    "placeholder_regexName": "例如：移除 Status 區塊",
+    "placeholder_regexPattern": "尋找 Regex，例如：<[^>]+>",
+    "placeholder_regexReplacement": "取代內容（留空即可移除）",
+    "empty_noRegexRules": "尚未新增 Regex 規則",
+    "toast_regexPatternRequired": "請輸入尋找 Regex",
+    "toast_regexInvalid": "Regex 無效：{0}",
     "placeholder_customName": "輸入自訂名稱",
-    
+
     "tag_scopeGlobal": "全域",
     "tag_scopeCharacter": "角色",
-    
+
     "panel_settingsTitle": "設定",
     "panel_accentColor": "重點色",
     "panel_previewRange": "訊息預覽: 顯示書籤後",
@@ -132,7 +149,7 @@
     "panel_sortBookmarkNew": "書籤由新到舊",
     "panel_sortBookmarkOld": "書籤由舊到新",
     "panel_resetDefaults": "恢復預設設定",
-    
+
     "panel_cacheTitle": "書籤暫存箱",
     "panel_cacheHint": "當書籤因自動清理、聊天被刪除或資料遺失而消失時，會暫存在這裡（最多 5 筆）",
     "cache_empty": "目前沒有任何暫存紀錄",
@@ -145,16 +162,16 @@
     "cache_selectTarget": "選擇目標聊天視窗：",
     "cache_confirmClearTitle": "清除所有暫存",
     "cache_confirmClearMessage": "確定要清除所有書籤暫存紀錄嗎？此操作無法復原。",
-    
+
     "panel_confirmResetTitle": "恢復預設設定",
     "panel_confirmResetMessage": "確定要將所有設定恢復為預設值嗎？（書籤資料不受影響）",
-    
+
     "panel_confirmRemoveTitle": "移除書籤",
     "panel_confirmRemoveMessage": "確定要從「{0}」中移除此書籤嗎？",
-    
+
     "panel_confirmDeleteTagTitle": "刪除標籤",
     "panel_confirmDeleteTagMessage": "確定要刪除標籤「{0}」嗎？\n所有書籤上的此標籤也會被移除。",
-    
+
     "empty_noBookmarks": "此聊天沒有任何書籤",
     "empty_noBookmarksHint": "點擊訊息上的按鈕來添加書籤",
     "empty_noMatchingBookmarks": "沒有符合此標籤的書籤",
@@ -163,32 +180,32 @@
     "empty_noSearchResultsHint": "嘗試使用其他關鍵字搜索",
     "empty_loading": "載入中...",
     "empty_noOtherChats": "沒有其他聊天視窗",
-    
+
     "addChat_title": "選擇要顯示的聊天",
     "addChat_currentChat": "目前聊天",
     "addChat_bookmarkCount": "{0} 個書籤",
     "addChat_noBookmarks": "無書籤",
-    
+
     "slash_panelDesc": "打開書籤面板",
     "slash_panelHelp": "開啟書籤管理面板，可以查看和管理所有書籤。",
     "slash_panelUsage": "用法：",
-    
+
     "slash_bookmarkDesc": "為最後一則訊息添加書籤",
     "slash_bookmarkHelp": "為當前聊天中最後一則訊息添加書籤。",
-    
+
     "slash_addDesc": "為指定訊息添加書籤",
     "slash_addHelp": "為指定編號的訊息添加書籤。",
     "slash_addUsageHint": "將為訊息 #5 添加書籤。",
     "slash_addArgDesc": "訊息編號 (例如: 5)",
-    
+
     "slash_removeDesc": "移除指定訊息的書籤",
     "slash_removeHelp": "移除指定編號訊息的書籤。",
     "slash_removeUsageHint": "將移除訊息 #5 的書籤。",
-    
+
     "slash_previewDesc": "預覽指定訊息",
     "slash_previewHelp": "預覽指定編號的訊息內容。",
     "slash_previewUsageHint": "將顯示訊息 #5 的預覽視窗。",
-    
+
     "slash_gotoDesc": "跳轉至指定訊息",
     "slash_gotoHelp": "跳轉至指定編號的訊息位置。",
     "slash_gotoUsageHint": "將跳轉到訊息 #5 的位置。"

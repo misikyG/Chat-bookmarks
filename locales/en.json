@@ -1,12 +1,12 @@
 {
     "extensionName": "Bookmarks",
     "extensionDesc": "Mark bookmarks on chat messages, preview and jump to bookmarked messages, support browsing bookmarks across chat windows for the same character.",
-    
+
     "iconName_star": "Star",
     "iconName_heart": "Heart",
     "iconName_bookmark": "Bookmark",
     "iconName_flag": "Flag",
-    
+
     "toast_bookmark": "Bookmark",
     "toast_bookmarkAdded": "Bookmark added",
     "toast_bookmarkRemoved": "Bookmark removed",
@@ -32,16 +32,16 @@
     "toast_checkingBookmarks": "Checking bookmarks...",
     "toast_checkingBookmarksHint": "More chat windows means slower search, please wait...",
     "toast_bookmarkAutoRemoved": "Invalid bookmarks have been automatically removed",
-    
+
     "toast_tag": "Tag",
     "toast_tagEnterName": "Please enter a tag name",
     "toast_tagAdded": "Added tag \"{0}\"",
     "toast_tagSelectFirst": "Please select a tag to delete first",
     "toast_tagDeleted": "Deleted tag \"{0}\"",
     "toast_tagUpdated": "Updated tag \"{0}\"",
-    
+
     "toast_settingsReset": "Settings have been reset to defaults",
-    
+
     "toast_bookmarkCache": "Bookmark Cache",
     "toast_cacheNotFound": "Cache entry not found",
     "toast_cacheWrongCharacter": "Please switch to \"{0}\" first to restore",
@@ -51,13 +51,13 @@
     "toast_cacheRestored": "Successfully restored {0} bookmarks to \"{1}\"",
     "toast_cacheClearedAll": "All cache entries have been cleared",
     "toast_cacheDeleted": "Cache entry has been deleted",
-    
+
     "toast_slashPanelOpened": "Bookmark panel opened",
     "toast_slashBookmarkAdded": "Bookmark added for message #{0}",
     "toast_slashBookmarkRemoved": "Bookmark removed from message #{0}",
     "toast_slashPreviewing": "Previewing message #{0}",
     "toast_slashJumped": "Jumped to message #{0}",
-    
+
     "btn_clickToToggle": "Click to toggle bookmark",
     "btn_jumpToMessage": "Jump to message",
     "btn_removeBookmark": "Remove bookmark",
@@ -67,6 +67,7 @@
     "btn_addOtherChats": "Add bookmarks from other chats",
     "btn_quickAction": "Quick message actions",
     "btn_tagManagement": "Tag management",
+    "btn_regex": "Regex",
     "btn_search": "Search",
     "btn_settings": "Settings",
     "btn_close": "Close",
@@ -78,22 +79,25 @@
     "btn_editName": "Edit name",
     "btn_confirm": "Confirm",
     "btn_clearSearch": "Clear search",
-    
+    "btn_removeRegex": "Remove this rule",
+    "btn_editRegex": "Edit this rule",
+    "btn_save": "Save",
+
     "btn_cache": "Bookmark Cache",
     "btn_cacheClearAll": "Clear all cache",
     "btn_cacheRestore": "Restore",
     "btn_cacheDelete": "Delete this cache",
-    
+
     "panel_bookmarksOf": "{0}'s Bookmarks",
     "panel_group": "Group",
     "panel_currentChat": "Current Chat",
     "panel_messagePreview": "Message Preview",
     "panel_jumpToMessage": "Jump to this message",
-    
+
     "panel_quickActionTitle": "Quick Message Actions",
     "panel_messageNumber": "Message #",
     "panel_enterMessageNumber": "Enter message number",
-    
+
     "panel_tagsTitle": "Tag Management",
     "panel_tagAdd": "Add Tag",
     "panel_tagManage": "Manage Tags",
@@ -111,14 +115,27 @@
     "panel_tagScope": "Tag Scope",
     "panel_tagChangeScope": "Change Scope",
     "panel_tagScopeHint": "\"Global\" = Universal tags; \"Char\" = This character only",
-    
+
     "panel_searchTitle": "Search Bookmarks",
     "placeholder_search": "Enter keyword or bookmark name...",
+    "panel_regexTitle": "Bookmark Regex",
+    "panel_regexHint": "Rules are applied in order to bookmark display text only and never modify chat files.",
+    "panel_regexAdd": "Add Regex rule",
+    "panel_regexRenderHtml": "Render the result as HTML",
+    "panel_regexName": "Rule name (optional)",
+    "panel_regexPattern": "Find Regex",
+    "panel_regexReplacement": "Replacement",
+    "placeholder_regexName": "For example: Remove Status block",
+    "placeholder_regexPattern": "Find Regex, e.g. <[^>]+>",
+    "placeholder_regexReplacement": "Replacement (leave blank to remove)",
+    "empty_noRegexRules": "No Regex rules yet",
+    "toast_regexPatternRequired": "Enter a find Regex",
+    "toast_regexInvalid": "Invalid Regex: {0}",
     "placeholder_customName": "Enter custom name",
-    
+
     "tag_scopeGlobal": "Global",
     "tag_scopeCharacter": "Char",
-    
+
     "panel_settingsTitle": "Settings",
     "panel_accentColor": "Accent Color",
     "panel_previewRange": "Message Preview: Show",
@@ -132,7 +149,7 @@
     "panel_sortBookmarkNew": "Bookmarks newest first",
     "panel_sortBookmarkOld": "Bookmarks oldest first",
     "panel_resetDefaults": "Reset to default settings",
-    
+
     "panel_cacheTitle": "Bookmark Cache",
     "panel_cacheHint": "When bookmarks are lost due to auto-cleanup, chat deletion, or data loss, they are cached here (max 5 entries)",
     "cache_empty": "No cached entries",
@@ -145,16 +162,16 @@
     "cache_selectTarget": "Select target chat:",
     "cache_confirmClearTitle": "Clear All Cache",
     "cache_confirmClearMessage": "Are you sure you want to clear all bookmark cache entries? This cannot be undone.",
-    
+
     "panel_confirmResetTitle": "Reset to Default Settings",
     "panel_confirmResetMessage": "Are you sure you want to reset all settings to defaults? (Bookmark data will not be affected)",
-    
+
     "panel_confirmRemoveTitle": "Remove Bookmark",
     "panel_confirmRemoveMessage": "Are you sure you want to remove this bookmark from \"{0}\"?",
-    
+
     "panel_confirmDeleteTagTitle": "Delete Tag",
     "panel_confirmDeleteTagMessage": "Are you sure you want to delete tag \"{0}\"?\nThis tag will also be removed from all bookmarks.",
-    
+
     "empty_noBookmarks": "No bookmarks in this chat",
     "empty_noBookmarksHint": "Click the button on a message to add a bookmark",
     "empty_noMatchingBookmarks": "No bookmarks matching this tag",
@@ -163,32 +180,32 @@
     "empty_noSearchResultsHint": "Try searching with different keywords",
     "empty_loading": "Loading...",
     "empty_noOtherChats": "No other chat windows",
-    
+
     "addChat_title": "Select chats to display",
     "addChat_currentChat": "Current Chat",
     "addChat_bookmarkCount": "{0} bookmarks",
     "addChat_noBookmarks": "No bookmarks",
-    
+
     "slash_panelDesc": "Open bookmark panel",
     "slash_panelHelp": "Open the bookmark management panel to view and manage all bookmarks.",
     "slash_panelUsage": "Usage:",
-    
+
     "slash_bookmarkDesc": "Bookmark last message",
     "slash_bookmarkHelp": "Add a bookmark to the last message in the current chat.",
-    
+
     "slash_addDesc": "Bookmark specified message",
     "slash_addHelp": "Add a bookmark to the message with the specified number.",
     "slash_addUsageHint": "This will add a bookmark to message #5.",
     "slash_addArgDesc": "Message number (e.g., 5)",
-    
+
     "slash_removeDesc": "Remove bookmark from specified message",
     "slash_removeHelp": "Remove the bookmark from the message with the specified number.",
     "slash_removeUsageHint": "This will remove the bookmark from message #5.",
-    
+
     "slash_previewDesc": "Preview specified message",
     "slash_previewHelp": "Preview the content of the message with the specified number.",
     "slash_previewUsageHint": "This will show a preview window of message #5.",
-    
+
     "slash_gotoDesc": "Jump to specified message",
     "slash_gotoHelp": "Jump to the location of the message with the specified number.",
     "slash_gotoUsageHint": "This will jump to message #5."

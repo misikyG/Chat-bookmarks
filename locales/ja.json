@@ -1,12 +1,12 @@
 {
     "extensionName": "ブックマーク",
     "extensionDesc": "チャットメッセージにブックマークを付けて、プレビューやジャンプができます。同じキャラクターの全チャットウィンドウのブックマークを閲覧できます。",
-    
+
     "iconName_star": "スター",
     "iconName_heart": "ハート",
     "iconName_bookmark": "ブックマーク",
     "iconName_flag": "フラグ",
-    
+
     "toast_bookmark": "ブックマーク",
     "toast_bookmarkAdded": "ブックマークを追加しました",
     "toast_bookmarkRemoved": "ブックマークを削除しました",
@@ -32,16 +32,16 @@
     "toast_checkingBookmarks": "ブックマークを確認中...",
     "toast_checkingBookmarksHint": "チャットウィンドウが多いほど検索が遅くなります。お待ちください...",
     "toast_bookmarkAutoRemoved": "無効なブックマークが自動的に削除されました",
-    
+
     "toast_tag": "タグ",
     "toast_tagEnterName": "タグ名を入力してください",
     "toast_tagAdded": "タグ「{0}」を追加しました",
     "toast_tagSelectFirst": "削除するタグを先に選択してください",
     "toast_tagDeleted": "タグ「{0}」を削除しました",
     "toast_tagUpdated": "タグ「{0}」を更新しました",
-    
+
     "toast_settingsReset": "設定をデフォルトに戻しました",
-    
+
     "toast_bookmarkCache": "ブックマークキャッシュ",
     "toast_cacheNotFound": "キャッシュが見つかりません",
     "toast_cacheWrongCharacter": "復元するにはまず「{0}」に切り替えてください",
@@ -51,13 +51,13 @@
     "toast_cacheRestored": "{0} 個のブックマークを「{1}」に復元しました",
     "toast_cacheClearedAll": "すべてのキャッシュをクリアしました",
     "toast_cacheDeleted": "キャッシュを削除しました",
-    
+
     "toast_slashPanelOpened": "ブックマークパネルを開きました",
     "toast_slashBookmarkAdded": "メッセージ #{0} にブックマークを追加しました",
     "toast_slashBookmarkRemoved": "メッセージ #{0} のブックマークを削除しました",
     "toast_slashPreviewing": "メッセージ #{0} をプレビュー中",
     "toast_slashJumped": "メッセージ #{0} にジャンプしました",
-    
+
     "btn_clickToToggle": "クリックでブックマークを切り替え",
     "btn_jumpToMessage": "メッセージにジャンプ",
     "btn_removeBookmark": "ブックマークを削除",
@@ -67,6 +67,7 @@
     "btn_addOtherChats": "他のチャットのブックマークを追加",
     "btn_quickAction": "クイック操作",
     "btn_tagManagement": "タグ管理",
+    "btn_regex": "Regex",
     "btn_search": "検索",
     "btn_settings": "設定",
     "btn_close": "閉じる",
@@ -78,22 +79,25 @@
     "btn_editName": "名前を編集",
     "btn_confirm": "確認",
     "btn_clearSearch": "検索をクリア",
-    
+    "btn_removeRegex": "このルールを削除",
+    "btn_editRegex": "このルールを編集",
+    "btn_save": "保存",
+
     "btn_cache": "ブックマークキャッシュ",
     "btn_cacheClearAll": "すべてのキャッシュをクリア",
     "btn_cacheRestore": "復元",
     "btn_cacheDelete": "このキャッシュを削除",
-    
+
     "panel_bookmarksOf": "{0} のブックマーク",
     "panel_group": "グループ",
     "panel_currentChat": "現在のチャット",
     "panel_messagePreview": "メッセージプレビュー",
     "panel_jumpToMessage": "このメッセージにジャンプ",
-    
+
     "panel_quickActionTitle": "クイックメッセージ操作",
     "panel_messageNumber": "メッセージ番号",
     "panel_enterMessageNumber": "メッセージ番号を入力",
-    
+
     "panel_tagsTitle": "タグ管理",
     "panel_tagAdd": "タグ追加",
     "panel_tagManage": "タグ管理",
@@ -111,14 +115,27 @@
     "panel_tagScope": "タグ範囲",
     "panel_tagChangeScope": "範囲を変更",
     "panel_tagScopeHint": "「全体」=共通タグ；「キャラ」=このキャラのみ",
-    
+
     "panel_searchTitle": "ブックマーク検索",
     "placeholder_search": "キーワードまたはブックマーク名を入力...",
+    "panel_regexTitle": "ブックマーク Regex",
+    "panel_regexHint": "ルールはブックマークの表示内容にのみ順番に適用され、チャットファイルは変更されません。",
+    "panel_regexAdd": "Regex ルールを追加",
+    "panel_regexRenderHtml": "処理結果を HTML として表示",
+    "panel_regexName": "ルール名（任意）",
+    "panel_regexPattern": "検索 Regex",
+    "panel_regexReplacement": "置換内容",
+    "placeholder_regexName": "例：Status ブロックを削除",
+    "placeholder_regexPattern": "検索 Regex、例：<[^>]+>",
+    "placeholder_regexReplacement": "置換内容（空欄なら削除）",
+    "empty_noRegexRules": "Regex ルールがありません",
+    "toast_regexPatternRequired": "検索 Regex を入力してください",
+    "toast_regexInvalid": "無効な Regex：{0}",
     "placeholder_customName": "カスタム名を入力",
-    
+
     "tag_scopeGlobal": "全体",
     "tag_scopeCharacter": "キャラ",
-    
+
     "panel_settingsTitle": "設定",
     "panel_accentColor": "アクセントカラー",
     "panel_previewRange": "メッセージプレビュー: ブックマーク後",
@@ -132,7 +149,7 @@
     "panel_sortBookmarkNew": "ブックマーク新しい順",
     "panel_sortBookmarkOld": "ブックマーク古い順",
     "panel_resetDefaults": "デフォルト設定に戻す",
-    
+
     "panel_cacheTitle": "ブックマークキャッシュ",
     "panel_cacheHint": "自動クリーンアップ、チャット削除、またはデータ消失でブックマークが失われた場合、ここに保存されます（最大 5 件）",
     "cache_empty": "キャッシュがありません",
@@ -145,16 +162,16 @@
     "cache_selectTarget": "対象チャットを選択：",
     "cache_confirmClearTitle": "すべてのキャッシュをクリア",
     "cache_confirmClearMessage": "すべてのブックマークキャッシュをクリアしますか？この操作は取り消しできません。",
-    
+
     "panel_confirmResetTitle": "デフォルト設定に戻す",
     "panel_confirmResetMessage": "すべての設定をデフォルトに戻しますか？（ブックマークデータには影響しません）",
-    
+
     "panel_confirmRemoveTitle": "ブックマークを削除",
     "panel_confirmRemoveMessage": "「{0}」からこのブックマークを削除しますか？",
-    
+
     "panel_confirmDeleteTagTitle": "タグを削除",
     "panel_confirmDeleteTagMessage": "タグ「{0}」を削除しますか？\nすべてのブックマークからこのタグも削除されます。",
-    
+
     "empty_noBookmarks": "このチャットにはブックマークがありません",
     "empty_noBookmarksHint": "メッセージのボタンをクリックしてブックマークを追加",
     "empty_noMatchingBookmarks": "このタグに一致するブックマークがありません",
@@ -163,32 +180,32 @@
     "empty_noSearchResultsHint": "別のキーワードで検索してみてください",
     "empty_loading": "読み込み中...",
     "empty_noOtherChats": "他のチャットがありません",
-    
+
     "addChat_title": "表示するチャットを選択",
     "addChat_currentChat": "現在のチャット",
     "addChat_bookmarkCount": "{0} 件のブックマーク",
     "addChat_noBookmarks": "ブックマークなし",
-    
+
     "slash_panelDesc": "ブックマークパネルを開く",
     "slash_panelHelp": "ブックマーク管理パネルを開き、すべてのブックマークを表示・管理できます。",
     "slash_panelUsage": "使用方法：",
-    
+
     "slash_bookmarkDesc": "最後のメッセージをブックマーク",
     "slash_bookmarkHelp": "現在のチャットの最後のメッセージにブックマークを追加します。",
-    
+
     "slash_addDesc": "指定メッセージをブックマーク",
     "slash_addHelp": "指定した番号のメッセージにブックマークを追加します。",
     "slash_addUsageHint": "メッセージ #5 にブックマークを追加します。",
     "slash_addArgDesc": "メッセージ番号（例：5）",
-    
+
     "slash_removeDesc": "指定メッセージのブックマークを削除",
     "slash_removeHelp": "指定した番号のメッセージからブックマークを削除します。",
     "slash_removeUsageHint": "メッセージ #5 のブックマークを削除します。",
-    
+
     "slash_previewDesc": "指定メッセージをプレビュー",
     "slash_previewHelp": "指定した番号のメッセージ内容をプレビューします。",
     "slash_previewUsageHint": "メッセージ #5 のプレビューウィンドウを表示します。",
-    
+
     "slash_gotoDesc": "指定メッセージにジャンプ",
     "slash_gotoHelp": "指定した番号のメッセージの位置にジャンプします。",
     "slash_gotoUsageHint": "メッセージ #5 の位置にジャンプします。"
