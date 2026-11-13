@@ -17,7 +17,8 @@ import { DOMPurify } from "../../../../lib.js";
 import { loadLocale, t } from "./i18n.js";
 
 const extensionName = "Chat-bookmarks";
-const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
+// 由模組實際網址推算路徑，避免 Linux（區分大小寫）上資料夾名稱不一致導致載入失敗
+const extensionFolderPath = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
 // SVG 圖樣定義
 const BOOKMARK_ICONS = {
@@ -71,7 +72,7 @@ const defaultSettings = {
     bookmarkRegexRenderHtml: false,
 };
 
-const MAX_BOOKMARK_CACHE = 50;
+const MAX_BOOKMARK_CACHE = 5;
 const MAX_BOOKMARK_SNAPSHOTS = 100;
 
 // 書籤暫存箱 SVG 圖示
@@ -192,6 +193,16 @@ function getBookmarkIconSvg(filled = false) {
 }
 
 /**
+ * 將 #rrggbb / #rgb 轉成 "r, g, b" 字串，供 rgba() 後備樣式使用
+ */
+function hexToRgbTriplet(hex, fallback = '255, 224, 132') {
+    let h = String(hex || '').trim().replace(/^#/, '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (!/^[0-9a-f]{6}$/i.test(h)) return fallback;
+    return `${parseInt(h.slice(0, 2), 16)}, ${parseInt(h.slice(2, 4), 16)}, ${parseInt(h.slice(4, 6), 16)}`;
+}
+
+/**
  * 套用 CSS 變數
  */
 function applyCssVariables() {
@@ -199,6 +210,7 @@ function applyCssVariables() {
     const lineClamp = getSetting('previewLineClamp');
 
     document.documentElement.style.setProperty('--bookmark-accent-color', accentColor);
+    document.documentElement.style.setProperty('--bookmark-accent-rgb', hexToRgbTriplet(accentColor));
     document.documentElement.style.setProperty('--bookmark-preview-line-clamp', String(lineClamp));
 
     // 同時更新已存在的書籤項目文字的行數限制
@@ -214,7 +226,15 @@ function applyCssVariables() {
  * 取得書籤暫存列表
  */
 function getBookmarkCache() {
-    return getSetting('bookmarkCache') || [];
+    const cache = getSetting('bookmarkCache');
+    if (!Array.isArray(cache)) return [];
+    if (cache.length > MAX_BOOKMARK_CACHE) {
+        // 修剪舊版遺留的超量暫存（最新的在最前面）
+        const trimmed = cache.slice(0, MAX_BOOKMARK_CACHE);
+        setSetting('bookmarkCache', trimmed);
+        return trimmed;
+    }
+    return cache;
 }
 
 /**
@@ -222,11 +242,7 @@ function getBookmarkCache() {
  * @param {object} entry - 暫存項目
  */
 function addToBookmarkCache(entry) {
-    const cache = getBookmarkCache();
-    cache.unshift(entry);
-    while (cache.length > MAX_BOOKMARK_CACHE) {
-        cache.pop();
-    }
+    const cache = [entry, ...getBookmarkCache()].slice(0, MAX_BOOKMARK_CACHE);
     setSetting('bookmarkCache', cache);
 }
 
@@ -1062,7 +1078,7 @@ function getBookmarkTagsHtml(bookmark, chatFileName) {
             const tag = customTags.find(t => t.id === tagId);
             if (!tag) return '';
             return `
-                <span class="bookmark-tag" data-tagid="${tag.id}" data-chat="${escapeHtml(chatFileName)}" data-msgid="${bookmark.messageId}" style="--tag-color: ${tag.color};">
+                <span class="bookmark-tag" data-tagid="${tag.id}" data-chat="${escapeHtml(chatFileName)}" data-msgid="${bookmark.messageId}" style="--tag-color: ${tag.color}; --tag-rgb: ${hexToRgbTriplet(tag.color)};">
                     <span class="tag-name">${escapeHtml(tag.name)}</span>
                     <span class="tag-remove" title="${t('btn_removeTag')}"><i class="fa-solid fa-xmark"></i></span>
                 </span>
@@ -1490,6 +1506,7 @@ async function showBookmarkPreview(messageId, chatFileName) {
     `;
 
     const popup = new Popup(popupContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
+    popup.dlg.classList.add('bookmark-popup');
     const dlg = $(popup.dlg);
 
     dlg.find('.bookmark-preview-load-more').on('click', async function() {
@@ -1631,7 +1648,7 @@ function createBookmarkItemHtml(bookmark) {
     const existingTags = bookmark.tags || [];
     const availableTags = visibleTags.filter(tg => !existingTags.includes(tg.id));
     const addTagOptionsHtml = availableTags.length > 0
-        ? availableTags.map(tg => `<div class="add-tag-option" data-tagid="${tg.id}" style="--tag-color: ${tg.color};"><span class="tag-dot"></span>${escapeHtml(tg.name)}</div>`).join('')
+        ? availableTags.map(tg => `<div class="add-tag-option" data-tagid="${tg.id}" style="--tag-color: ${tg.color}; --tag-rgb: ${hexToRgbTriplet(tg.color)};"><span class="tag-dot"></span>${escapeHtml(tg.name)}</div>`).join('')
         : `<div class="add-tag-empty">${t('panel_tagNoAvailable')}</div>`;
 
     const customName = bookmark.customName || '';
@@ -1988,7 +2005,7 @@ async function showBookmarksPanel() {
     const tagFilterHtml = visibleTagsForFilter.map(tag => {
         const scopeLabel = getTagScopeLabel(tag);
         return `
-            <span class="tag-filter-item ${activeTagFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
+            <span class="tag-filter-item ${activeTagFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color}; --tag-rgb: ${hexToRgbTriplet(tag.color)};">
                 ${escapeHtml(tag.name)}<span class="tag-scope-badge">(${scopeLabel})</span>
             </span>
         `;
@@ -2182,6 +2199,7 @@ async function showBookmarksPanel() {
     `;
 
     const popup = new Popup(panelContent, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: t('btn_close') });
+    popup.dlg.classList.add('bookmark-popup');
     const dlg = $(popup.dlg);
 
     const tabsScrollable = dlg.find('.bookmarks-tabs-scrollable')[0];
@@ -2219,7 +2237,7 @@ async function showBookmarksPanel() {
         const tagFilterHtml = visibleTagsForUpdate.map(tag => {
             const scopeLabel = getTagScopeLabel(tag);
             return `
-                <span class="tag-filter-item ${currentFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color};">
+                <span class="tag-filter-item ${currentFilters.includes(tag.id) ? 'active' : ''}" data-tagid="${tag.id}" style="--tag-color: ${tag.color}; --tag-rgb: ${hexToRgbTriplet(tag.color)};">
                     ${escapeHtml(tag.name)}<span class="tag-scope-badge">(${scopeLabel})</span>
                 </span>
             `;

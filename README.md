@@ -61,7 +61,7 @@
 - 當聊天視窗太多，打開面板以及查找書籤速度會變慢（需載入時間）
 - 跨窗跳轉或者跳轉太過長遠的訊息時需要載入時間，避免資訊消失請勿在此時隨意操作
 - 書籤儲存在各聊天檔案的 metadata。分支聊天會保留父聊天複製的 metadata，但面板只顯示屬於目前聊天的書籤，不會在載入時自動刪除其他書籤資料。
-- 擴充會保留最近 50 組暫存紀錄與 100 組書籤快照，供意外資料異常時從書籤面板復原。
+- 擴充會保留最近 5 組暫存紀錄與 100 組書籤快照，供意外資料異常時從書籤面板復原。
 - SillyTavern 的訊息刪除事件不會提供被刪除的訊息編號，因此擴充不會自動刪除書籤，避免刪除聊天中間訊息時誤刪其他書籤。
 
 ---
@@ -123,6 +123,6 @@ A SillyTavern extension that allows you to mark bookmarks on chat messages for q
 - Having many chat sessions may slow down the panel loading and bookmark searching
 - Cross-chat jumping or jumping to distant messages requires loading time; avoid operating during this process
 - Bookmarks are stored in each chat file's metadata. A branch retains copied parent metadata, but the panel only shows bookmarks that belong to the current chat and never deletes the others while loading.
-- The extension retains the most recent 50 cache entries and 100 bookmark snapshots for recovery from unexpected data issues.
+- The extension retains the most recent 5 cache entries and 100 bookmark snapshots for recovery from unexpected data issues.
 - SillyTavern's message deletion event does not identify the deleted message, so the extension never automatically removes bookmarks and avoids deleting unrelated bookmarks when a middle message is removed.
 
